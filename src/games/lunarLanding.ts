@@ -10,9 +10,13 @@
  * - Cámara que se acerca al descender, HUD estilo computadora Apolo, avisos de
  *   Houston, alarma 1202, sonido (Web Audio) y controles en pantalla que se iluminan.
  * - 3 niveles de dificultad y resultado con estrellas.
+ *
+ * VISTA DE CABINA: la pantalla principal es la ventana del módulo (primera persona, ver
+ * cockpitView.ts). La vista exterior 2D se muestra en el monitor "Cámara de alunizaje · CH. 4".
  */
 import type { GameContext } from './index';
 import { fbm, makeNoise, rng } from '../ui/moonTexture';
+import { createCockpit } from './cockpitView';
 
 // ---------------------------------------------------------------- constantes
 const H = 560; // alto del mundo (unidades). El ancho se adapta a la pantalla.
@@ -168,6 +172,35 @@ const CSS = `
 .lm-count { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; font-family: var(--font-ui); font-size: clamp(80px, 16vw, 180px); font-weight: 900; color: #fff; text-shadow: 0 0 40px rgba(168,85,247,.9); }
 .lm-count span { animation: lm-count 1s ease-out both; }
 @keyframes lm-count { from { opacity: 0; transform: scale(1.8); } 30% { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.7); } }
+.lm canvas.ck-view { position: absolute; inset: 0; }
+.ck-monitor {
+  position: absolute; left: 53%; bottom: 10px; transform: translateX(-50%); width: clamp(220px, 25vw, 330px);
+  padding: 26px 10px 10px; border-radius: 12px; border: 1px solid #0b0d10;
+  background: linear-gradient(180deg, #3a3f47, #1d2026); box-shadow: 0 10px 30px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.15);
+}
+.ck-monitor__label { position: absolute; top: 4px; left: 10px; right: 10px; display: flex; justify-content: space-between; font-family: var(--font-ui); font-size: 10px; letter-spacing: .14em; color: #e5e7eb; }
+.ck-monitor__label i { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444; align-self: center; }
+.ck-monitor__screen { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px / 14px; border: 3px solid #0b0d10; background: #000; }
+.ck-monitor__screen canvas { filter: grayscale(1) contrast(1.15) brightness(1.1); }
+.ck-monitor__screen::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.6)); }
+.ck-clock { position: absolute; top: 66px; right: 14px; display: grid; justify-items: center; gap: 6px; padding: 8px 10px 10px; border-radius: 12px; border: 1px solid #0b0d10;
+  background: linear-gradient(180deg, #30343b, #1a1d22); box-shadow: 0 8px 22px rgba(0,0,0,.6); font-family: var(--font-ui); font-size: 10px; letter-spacing: .14em; color: #d1d5db; }
+.ck-clock svg { width: 92px; height: 92px; }
+.ck-live { display: flex; align-items: center; gap: 6px; }
+.ck-live i { width: 14px; height: 14px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 12px #ef4444; }
+.ck-live.off i { background: #4b5563; box-shadow: none; }
+.lm-capcom { left: 50%; top: 9%; bottom: auto; transform: translateX(-50%); width: min(470px, 70%); }
+.lm-capcom p:not(:nth-last-child(-n+2)) { display: none; }
+.ck-monitor__label b { font-weight: inherit; }
+@media (max-width: 720px) {
+  .ck-monitor { left: 8px; bottom: 8px; transform: none; width: 36%; padding: 20px 6px 6px; }
+  .ck-monitor__label { font-size: 8px; left: 6px; right: 6px; }
+  .ck-clock, .ck-long { display: none; }
+  .lm-pad { right: 8px; bottom: 10px; gap: 6px; }
+  .lm-key { width: 56px !important; height: 56px !important; }
+  .lm-key--main { width: 72px !important; height: 72px !important; }
+}
 @media (max-width: 720px) {
   .lm-hud { top: 8px; left: 8px; width: 172px; padding: 7px 9px; }
   .lm-hud__top { font-size: 12px; margin-bottom: 2px; }
@@ -176,7 +209,7 @@ const CSS = `
   .lm-hud__zone { font-size: 14px; }
   .lm-lights { display: none; }
   .lm-tools { top: 8px; right: 8px; }
-  .lm-capcom { left: 8px; width: calc(100% - 16px); bottom: 104px; }
+  .lm-capcom { left: 50%; top: 206px; bottom: auto; width: calc(100% - 36px); }
   .lm-capcom p { font-size: 12px; padding: 6px 10px; }
   .lm-capcom p:not(:last-child) { display: none; }
   .lm-brief { grid-template-columns: 1fr; }
@@ -607,7 +640,21 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
 
   root.innerHTML = `
     <div class="lm">
-      <canvas aria-label="Simulador de alunizaje del módulo lunar Apolo"></canvas>
+      <canvas class="ck-view" aria-label="Vista desde la ventana del módulo lunar: centra la zona de alunizaje en la mira"></canvas>
+      <div class="ck-monitor" aria-hidden="true">
+        <span class="ck-monitor__label"><span><b class="ck-long">CÁMARA DE ALUNIZAJE · </b>CH. 4</span><i></i></span>
+        <div class="ck-monitor__screen"><canvas></canvas></div>
+      </div>
+      <div class="ck-clock" aria-hidden="true">
+        <span>UTC · HOUSTON</span>
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#0b0d10" stroke="#555b66" stroke-width="4"/>
+          ${Array.from({ length: 12 }, (_, i) => `<line x1="50" y1="9" x2="50" y2="${i % 3 ? 15 : 19}" stroke="#e5e7eb" stroke-width="${i % 3 ? 2 : 3.5}" transform="rotate(${i * 30} 50 50)"/>`).join('')}
+          <line data-hh x1="50" y1="50" x2="50" y2="28" stroke="#f3f4f6" stroke-width="5" stroke-linecap="round"/>
+          <line data-mm x1="50" y1="50" x2="50" y2="16" stroke="#f3f4f6" stroke-width="3" stroke-linecap="round"/>
+          <line data-ss x1="50" y1="56" x2="50" y2="14" stroke="#ef4444" stroke-width="1.5"/>
+          <circle cx="50" cy="50" r="3.5" fill="#ef4444"/></svg>
+        <span class="ck-live" data-live><i></i>SEÑAL EN VIVO</span>
+      </div>
       <div class="lm-hud" hidden>
         <div class="lm-hud__top"><span>LM · DSKY</span><span data-prog>PROG 64</span></div>
         <div class="lm-hud__grid">
@@ -638,7 +685,10 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     </div>`;
 
   const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
-  const canvas = $<HTMLCanvasElement>('canvas');
+  const canvas = $<HTMLCanvasElement>('.ck-monitor canvas');
+  const vcanvas = $<HTMLCanvasElement>('canvas.ck-view');
+  const cockpit = createCockpit(vcanvas, earthImg);
+  const liveEl = $('[data-live]');
   const ctx = canvas.getContext('2d')!;
   const hud = $('.lm-hud');
   const hudAlt = $('[data-alt]');
@@ -750,6 +800,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     }
     groundCanvas = renderGround(rand, noise);
     mountainCanvas = renderMountains(seed);
+    cockpit.build(W, zoneX1, zoneX2, seed);
   };
 
   const renderGround = (rand: () => number, noise: ReturnType<typeof makeNoise>): HTMLCanvasElement => {
@@ -950,6 +1001,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     canvas.width = Math.max(1, Math.round(r.width * dpr));
     canvas.height = Math.max(1, Math.round(r.height * dpr));
     renderSky();
+    cockpit.resize();
   };
 
   /** En pantallas verticales se deja ver más cielo para que el suelo y el módulo quepan. */
@@ -1453,7 +1505,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     hud.hidden = true;
     pad.classList.add('disabled');
     const rules = () => `
-      <li><i>1</i><span>Aterriza dentro de la <b>zona de alunizaje</b> marcada en azul.</span></li>
+      <li><i>1</i><span>Mira por la ventana: mueve la nave hasta que la <b>zona azul</b> quede en la <b>mira</b> del centro.</span></li>
       <li><i>2</i><span>Velocidad vertical menor a <b>${(cfg.vy / PX_PER_M).toFixed(1)} m/s</b>.</span></li>
       <li><i>3</i><span>Velocidad horizontal menor a <b>${(cfg.vx / PX_PER_M).toFixed(1)} m/s</b>.</span></li>
       <li><i>4</i><span>Antes de quedarte sin <b>combustible</b>. ¡La gravedad lunar es 1/6 de la terrestre!</span></li>`;
@@ -1558,8 +1610,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
 
   // ---------- partida ----------
   const newGame = (keepWorld: boolean) => {
-    const r = canvas.getBoundingClientRect();
-    const newW = r.width > 0 && r.height > 0 ? Math.max(700, Math.min(1800, Math.round((H * r.width) / r.height))) : 1000;
+    const newW = 1100; // mundo fijo: el monitor es solo una cámara
     if (!keepWorld || !groundCanvas || newW !== W) {
       W = newW;
       buildWorld();
@@ -1594,6 +1645,28 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     last = t;
     update(dt);
     draw();
+    cockpit.draw({
+      x,
+      alt: altitude(),
+      vx,
+      vy,
+      throttle,
+      left: input.left || touch.left,
+      right: input.right || touch.right,
+      status,
+      zoneX1,
+      zoneX2,
+      safeVy: cfg.vy,
+      shake,
+      flash,
+      dt,
+      time,
+    });
+    const lost = status === 'crashed';
+    if (liveEl.classList.contains('off') !== lost) {
+      liveEl.classList.toggle('off', lost);
+      liveEl.lastChild!.textContent = lost ? 'SIN SEÑAL' : 'SEÑAL EN VIVO';
+    }
     raf = requestAnimationFrame(loop);
   };
 
@@ -1657,6 +1730,21 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
 
   const ro = new ResizeObserver(() => resize());
   ro.observe(canvas);
+  ro.observe(vcanvas);
+  // reloj de Houston (hora real)
+  const hands = { h: $('[data-hh]'), m: $('[data-mm]'), s: $('[data-ss]') };
+  const tick = () => {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false }).formatToParts(new Date());
+    const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+    const hh = get('hour') % 12;
+    const mm = get('minute');
+    const ss = get('second');
+    hands.h.setAttribute('transform', `rotate(${hh * 30 + mm * 0.5} 50 50)`);
+    hands.m.setAttribute('transform', `rotate(${mm * 6} 50 50)`);
+    hands.s.setAttribute('transform', `rotate(${ss * 6} 50 50)`);
+  };
+  tick();
+  const clockTimer = window.setInterval(tick, 1000);
   resize();
   newGame(false);
   showBrief();
@@ -1665,6 +1753,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
   return () => {
     cancelAnimationFrame(raf);
     ro.disconnect();
+    window.clearInterval(clockTimer);
     timers.forEach((t) => window.clearTimeout(t));
     window.removeEventListener('keydown', onKey);
     window.removeEventListener('keyup', onKey);
