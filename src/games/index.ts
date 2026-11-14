@@ -10,6 +10,7 @@ import { injectGameStyles } from './styles';
 import lunarLanding from './lunarLanding';
 import apollo11Story from './apollo11Story';
 import audioFact from './audioFact';
+import { withIntro } from './introVideo';
 
 export interface GameContext {
   root: HTMLElement;
@@ -29,7 +30,7 @@ export interface LevelGame {
 /** Juegos por robot, en el mismo orden que sus 4 niveles. `undefined` = usa el quiz. */
 export const GAMES: Partial<Record<RobotId, (LevelGame | undefined)[]>> = {
   lrv: [
-    { title: 'Aterrizaje', subtitle: 'Misión 1 · Aterriza el módulo lunar', play: lunarLanding },
+    { title: 'Aterrizaje', subtitle: 'Misión 1 · Aterriza el módulo lunar', play: withIntro('videos/moon_1.mp4', lunarLanding) },
     { title: 'Apolo 11', subtitle: 'Misión 2 · La historia del primer alunizaje', play: apollo11Story },
     { title: 'Dato curioso', subtitle: 'Misión 3 · Escucha el dato en inglés', play: audioFact },
   ],

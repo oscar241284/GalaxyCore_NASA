@@ -69,6 +69,7 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
   let cracks: { x: number; y: number }[][] = [];
   let dust: { gx: number; gz: number; vx: number; vz: number; life: number }[] = [];
   let haze = 0;
+  let prevStatus = '';
 
   // ---------------------------------------------------------------- geometría
   const windowPath = (g: CanvasRenderingContext2D, inset = 0) => {
@@ -256,6 +257,7 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     ridge = new Float32Array(240);
     for (let i = 0; i < ridge.length; i++) ridge[i] = fbm(noise, i / 24, 0.5, 5);
     cracks = [];
+    prevStatus = '';
     dust = [];
     haze = 0;
     roll = 0;
@@ -268,8 +270,10 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     ch = canvas.height = Math.max(1, Math.round(r.height * dpr));
     const wide = r.width >= 720;
     if (wide) {
+      // la ventana termina antes de la columna derecha (reloj + cámara), para que nada la tape
+      const mon = canvas.parentElement?.querySelector('.ck-monitor')?.getBoundingClientRect();
       wl = cw * 0.085;
-      wr = cw * 0.915;
+      wr = mon && mon.width ? (mon.left - r.left - 34) * dpr : cw * 0.915;
       wt = ch * 0.075;
       wb = ch * 0.86;
     } else {
@@ -511,33 +515,47 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     }
 
     // polvo levantado por el motor cerca del suelo
-    const dustK = flying && s.alt < 260 && s.throttle > 0.08 ? s.throttle * (1 - s.alt / 260) : 0;
+    const dustK = flying && s.alt < 260 && s.throttle > 0.05 ? s.throttle * (1 - s.alt / 260) : 0;
+    // al tocar el suelo: nube de polvo que sale hacia los lados y se asienta poco a poco
+    if (s.status === 'landed' && prevStatus !== 'landed') {
+      for (let i = 0; i < 420; i++) {
+        const a = Math.PI * (0.02 + Math.random() * 0.96);
+        const sp = 60 + Math.random() * 420;
+        dust.push({ gx: cx + Math.cos(a) * 25, gz: cz + Math.sin(a) * 25, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, life: 0.8 + Math.random() * 1.6 });
+      }
+      haze = 0.95;
+    }
+    prevStatus = s.status;
     if (dustK > 0) {
-      const n = Math.round(dustK * 220 * s.dt) + (Math.random() < dustK ? 1 : 0);
+      const n = Math.round(dustK * 380 * s.dt) + (Math.random() < dustK ? 1 : 0);
       for (let i = 0; i < n; i++) {
         const a = Math.PI * (0.15 + Math.random() * 0.7); // hacia adelante
         const sp = (180 + Math.random() * 320) * (0.6 + dustK);
         dust.push({ gx: cx + Math.cos(a) * 20, gz: cz + Math.sin(a) * 20, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, life: 0.6 + Math.random() * 0.5 });
       }
     }
-    haze += ((s.status === 'landed' ? 0 : dustK * 0.6) - haze) * Math.min(1, s.dt * (s.status === 'landed' ? 0.8 : 3));
+    haze += ((s.status === 'landed' ? 0 : dustK * 0.75) - haze) * Math.min(1, s.dt * (s.status === 'landed' ? 0.45 : 3));
     ctx.lineCap = 'round';
     for (const d of dust) {
       d.life -= s.dt;
       d.gx += d.vx * s.dt;
       d.gz += d.vz * s.dt;
+      if (s.status === 'landed') {
+        d.vx *= 1 - s.dt * 1.2; // el polvo frena y se asienta
+        d.vz *= 1 - s.dt * 1.2;
+      }
       const p1 = proj(d.gx, d.gz);
       const p0 = proj(d.gx - d.vx * 0.05, d.gz - d.vz * 0.05);
       if (!p1 || !p0) continue;
-      ctx.strokeStyle = `rgba(205,200,190,${Math.max(0, d.life) * 0.5})`;
-      ctx.lineWidth = Math.max(dpr, (F * 1.4) / p1.d);
+      ctx.strokeStyle = `rgba(215,210,200,${Math.min(0.45, Math.max(0, d.life) * 0.4)})`;
+      ctx.lineWidth = Math.min(3.5 * dpr, Math.max(dpr, (F * 1.2) / p1.d));
       ctx.beginPath();
       ctx.moveTo(p0.x, p0.y);
       ctx.lineTo(p1.x, p1.y);
       ctx.stroke();
     }
     dust = dust.filter((d) => d.life > 0);
-    if (dust.length > 700) dust.splice(0, dust.length - 700);
+    if (dust.length > 1100) dust.splice(0, dust.length - 1100);
     if (haze > 0.01) {
       const hz = ctx.createLinearGradient(0, horizon, 0, wb);
       hz.addColorStop(0, `rgba(190,186,176,${haze * 0.15})`);

@@ -55,7 +55,7 @@ interface Particle {
 
 // ---------------------------------------------------------------- estilos
 const CSS = `
-.lm { position: absolute; inset: 0; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
+.lm { --side: clamp(260px, min(30vw, (100cqh - 330px) * 1.3), 460px); container-type: size; position: absolute; inset: 0; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
 .lm canvas { display: block; width: 100%; height: 100%; }
 .lm-hud {
   position: absolute; top: 12px; left: 12px; width: 250px; padding: 12px 14px 10px;
@@ -174,27 +174,28 @@ const CSS = `
 @keyframes lm-count { from { opacity: 0; transform: scale(1.8); } 30% { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.7); } }
 .lm canvas.ck-view { position: absolute; inset: 0; }
 .ck-monitor {
-  position: absolute; left: 53%; bottom: 10px; transform: translateX(-50%); width: clamp(220px, 25vw, 330px);
-  padding: 26px 10px 10px; border-radius: 12px; border: 1px solid #0b0d10;
+  position: absolute; right: 14px; top: 162px; width: var(--side);
+  padding: 28px 10px 10px; border-radius: 12px; border: 1px solid #0b0d10;
   background: linear-gradient(180deg, #3a3f47, #1d2026); box-shadow: 0 10px 30px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.15);
 }
-.ck-monitor__label { position: absolute; top: 4px; left: 10px; right: 10px; display: flex; justify-content: space-between; font-family: var(--font-ui); font-size: 10px; letter-spacing: .14em; color: #e5e7eb; }
+.ck-monitor__label { position: absolute; top: 6px; left: 12px; right: 12px; display: flex; justify-content: space-between; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; color: #e5e7eb; }
 .ck-monitor__label i { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444; align-self: center; }
 .ck-monitor__screen { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px / 14px; border: 3px solid #0b0d10; background: #000; }
 .ck-monitor__screen canvas { filter: grayscale(1) contrast(1.15) brightness(1.1); }
 .ck-monitor__screen::after { content: ''; position: absolute; inset: 0; pointer-events: none;
   background: repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.6)); }
-.ck-clock { position: absolute; top: 66px; right: 14px; display: grid; justify-items: center; gap: 6px; padding: 8px 10px 10px; border-radius: 12px; border: 1px solid #0b0d10;
+.ck-clock { position: absolute; top: 66px; right: 14px; width: var(--side); height: 84px; display: grid; grid-template-columns: 68px 1fr; grid-template-rows: 1fr 1fr; align-items: center; column-gap: 14px; padding: 8px 14px; border-radius: 12px; border: 1px solid #0b0d10;
   background: linear-gradient(180deg, #30343b, #1a1d22); box-shadow: 0 8px 22px rgba(0,0,0,.6); font-family: var(--font-ui); font-size: 10px; letter-spacing: .14em; color: #d1d5db; }
-.ck-clock svg { width: 92px; height: 92px; }
+.ck-clock svg { grid-row: 1 / 3; grid-column: 1; width: 68px; height: 68px; }
+.ck-clock > span:first-child { grid-column: 2; align-self: end; }
 .ck-live { display: flex; align-items: center; gap: 6px; }
 .ck-live i { width: 14px; height: 14px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 12px #ef4444; }
 .ck-live.off i { background: #4b5563; box-shadow: none; }
-.lm-capcom { left: 50%; top: 9%; bottom: auto; transform: translateX(-50%); width: min(470px, 70%); }
+.lm-capcom { left: calc(272px + (100% - var(--side) - 300px) / 2); top: 9%; bottom: auto; transform: translateX(-50%); width: min(470px, calc(100% - var(--side) - 330px)); }
 .lm-capcom p:not(:nth-last-child(-n+2)) { display: none; }
 .ck-monitor__label b { font-weight: inherit; }
 @media (max-width: 720px) {
-  .ck-monitor { left: 8px; bottom: 8px; transform: none; width: 36%; padding: 20px 6px 6px; }
+  .ck-monitor { left: 8px; right: auto; top: auto; bottom: 8px; width: 42%; padding: 20px 6px 6px; }
   .ck-monitor__label { font-size: 8px; left: 6px; right: 6px; }
   .ck-clock, .ck-long { display: none; }
   .lm-pad { right: 8px; bottom: 10px; gap: 6px; }
@@ -209,7 +210,7 @@ const CSS = `
   .lm-hud__zone { font-size: 14px; }
   .lm-lights { display: none; }
   .lm-tools { top: 8px; right: 8px; }
-  .lm-capcom { left: 50%; top: 206px; bottom: auto; width: calc(100% - 36px); }
+  .lm-capcom { left: 50% !important; top: 206px; bottom: auto; width: calc(100% - 36px); }
   .lm-capcom p { font-size: 12px; padding: 6px 10px; }
   .lm-capcom p:not(:last-child) { display: none; }
   .lm-brief { grid-template-columns: 1fr; }
@@ -1189,9 +1190,9 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
   // ---------- física ----------
   const emitDust = (dt: number) => {
     const alt = altitude();
-    if (alt > 90 || throttle < 0.1) return;
-    const k = throttle * (1 - alt / 90);
-    const n = Math.round(k * 160 * dt) + (Math.random() < k ? 1 : 0);
+    if (alt > 220 || throttle < 0.08) return;
+    const k = throttle * Math.pow(1 - alt / 220, 1.3);
+    const n = Math.round(k * 340 * dt) + (Math.random() < k ? 1 : 0);
     const gy = groundAt(x);
     for (let i = 0; i < n; i++) {
       const dir = Math.random() < 0.5 ? -1 : 1;
@@ -1200,12 +1201,34 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
         x: x + dir * Math.random() * 10,
         y: gy - Math.random() * 3,
         vx: dir * sp * k,
-        vy: -Math.random() * 25,
-        life: 0.5 + Math.random() * 0.6,
-        max: 1.1,
-        size: 1 + Math.random() * 2.2,
+        vy: -Math.random() * 45,
+        life: 0.6 + Math.random() * 0.8,
+        max: 1.4,
+        size: 1.6 + Math.random() * 3.4,
         kind: 'dust',
-        color: Math.random() < 0.5 ? '#b9b7b0' : '#8f8d87',
+        color: Math.random() < 0.5 ? '#e2dfd8' : '#bdbab3',
+        rot: 0,
+        vr: 0,
+      });
+    }
+  };
+
+  /** Nube de polvo al posarse: el regolito sale disparado hacia los lados y se asienta. */
+  const dustCloud = () => {
+    const gy = groundAt(x);
+    for (let i = 0; i < 160; i++) {
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      const sp = 40 + Math.random() * 200;
+      particles.push({
+        x: x + dir * Math.random() * 20,
+        y: gy - Math.random() * 4,
+        vx: dir * sp,
+        vy: -Math.random() * 60,
+        life: 1 + Math.random() * 1.4,
+        max: 2.4,
+        size: 2 + Math.random() * 4,
+        kind: 'dust',
+        color: Math.random() < 0.5 ? '#e2dfd8' : '#bdbab3',
         rot: 0,
         vr: 0,
       });
@@ -1463,6 +1486,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     if (inZone && vyOk && vxOk) {
       status = 'landed';
       contactUntil = time + 99;
+      dustCloud();
       const landVy = vy;
       vx = vy = 0;
       throttle = 0;
