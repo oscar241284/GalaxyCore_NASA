@@ -1,10 +1,9 @@
 /**
- * HOME: portada cinematográfica.
- * - Luna 3D realista (Three.js) con relieve, cráteres y luz solar rasante, la Tierra al fondo
- *   y estrellas; todo reacciona al movimiento del puntero (parallax).
- * - Título, consola GALAXYCORE OS con efecto máquina de escribir, botón INICIAR MISIÓN
- *   interactivo (brillo, efecto magnético y onda al pulsar) y tarjetas de los 4 robots
- *   con su progreso.
+ * HOME: portada pensada para niños.
+ * - Bip, un robot guía original: saluda, sigue el puntero con los ojos, habla con globos
+ *   de texto (con botón para escucharlos en voz alta) y cuenta datos curiosos al tocarlo.
+ * - Planetas 3D que se pueden tocar (Luna, Marte y Tierra): giran y Bip explica qué son.
+ * - Botón JUGAR grande, "¿Cómo se juega?" en 3 pasos y tarjetas de robots con estrellas.
  */
 import gsap from 'gsap';
 import {
@@ -20,11 +19,14 @@ import {
   PerspectiveCamera,
   Points,
   PointsMaterial,
+  Raycaster,
   Scene,
   SphereGeometry,
   SRGBColorSpace,
   Sprite,
   SpriteMaterial,
+  Vector2,
+  Vector3,
   WebGLRenderer,
 } from 'three';
 import type { ScreenFactory } from '../router';
@@ -34,192 +36,253 @@ import { ROBOTS } from '../data/robots';
 import { esc } from '../ui/modal';
 import { createMoonMaps, fbm, makeNoise, rng } from '../ui/moonTexture';
 
-const CHAR_MS = 22;
-const LINE_PAUSE_MS = 320;
+type Planet = 'moon' | 'mars' | 'earth';
+
+const PLANET_INFO: Record<Planet, { label: string; say: string }> = {
+  moon: {
+    label: 'La Luna',
+    say: '¡Esa es la Luna! Está a unos 384.000 km. Allí trabajaron el LRV del Apolo 15 y el Lunojod 2.',
+  },
+  mars: {
+    label: 'Marte',
+    say: '¡Marte, el planeta rojo! Su suelo tiene mucho óxido de hierro. Allí exploraron Spirit y Opportunity.',
+  },
+  earth: {
+    label: 'La Tierra',
+    say: '¡Nuestra casa, la Tierra! Desde aquí los equipos de la misión controlaban a los robots.',
+  },
+};
+
+const FACTS = [
+  'En la Luna pesarías 6 veces menos. ¡Podrías dar saltos gigantes!',
+  'Un día en Marte dura casi 24 horas y 40 minutos. Se llama "sol".',
+  'Opportunity recorrió más de 45 km en Marte. ¡Un récord!',
+  'Las huellas de los astronautas siguen en la Luna, porque allá no hay viento que las borre.',
+  'Los robots de Marte funcionaban con la luz del Sol, usando paneles solares.',
+  '¡Toca la Luna, Marte o la Tierra para descubrir más!',
+];
 
 // ---------------------------------------------------------------- estilos
 const CSS = `
-.hero {
-  position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow: hidden;
-  isolation: isolate;
-  background: radial-gradient(ellipse 80% 70% at 75% 45%, #120c2b 0%, #05040d 65%);
+.kid {
+  position: relative; min-height: 100vh; min-height: 100dvh; overflow: hidden; isolation: isolate;
+  background: radial-gradient(ellipse 80% 70% at 75% 45%, #1a1140 0%, #05040d 65%);
 }
-.hero__space { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-.hero__space canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.4s ease; }
-.hero__space canvas.on { opacity: 1; }
-.hero__shade {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(90deg, rgba(5,4,13,.92) 0%, rgba(5,4,13,.65) 38%, rgba(5,4,13,0) 62%);
+.kid__space { position: absolute; inset: 0; z-index: 0; }
+.kid__space canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; touch-action: pan-y; }
+.kid__space canvas.on { opacity: 1; }
+.kid__shade { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(5,4,13,.88) 0%, rgba(5,4,13,.55) 40%, rgba(5,4,13,0) 60%); }
+.kid__labels { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.kid__label {
+  position: absolute; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px;
+  border: 2px solid rgba(255,255,255,.75); border-radius: 999px; transform: translate(-50%, -100%);
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700; letter-spacing: .05em; color: #fff;
+  background: rgba(20,14,44,.85); box-shadow: 0 6px 20px rgba(0,0,0,.5); white-space: nowrap;
+  transition: transform .2s var(--ease-spring), background .2s;
 }
-.hero__meteor {
-  position: absolute; z-index: 1; width: 140px; height: 2px; border-radius: 2px; pointer-events: none;
-  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.9));
-  transform: rotate(-28deg); opacity: 0;
-  animation: hero-meteor 1.1s ease-out forwards;
+.kid__label.hover { transform: translate(-50%, -100%) scale(1.12); background: #7c3aed; }
+.kid__label svg { width: 18px; height: 18px; animation: kid-tap 1.4s ease-in-out infinite; }
+@keyframes kid-tap { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) scale(.92); } }
+
+.kid__content {
+  position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: center;
+  gap: clamp(12px, 2vh, 20px); width: min(660px, 100%); min-height: 100vh; min-height: 100dvh;
+  padding: calc(var(--header-h) + 4px) var(--gutter) 22px clamp(20px, 5vw, 80px);
+  pointer-events: none;
 }
-@keyframes hero-meteor {
-  0% { opacity: 0; translate: 0 0; }
-  15% { opacity: 1; }
-  100% { opacity: 0; translate: -420px 220px; }
-}
-.hero__content {
-  position: relative; z-index: 2;
-  display: flex; flex-direction: column; justify-content: center; gap: clamp(12px, 2.2vh, 22px);
-  width: min(680px, 100%);
-  min-height: 100vh; min-height: 100dvh;
-  padding: calc(var(--header-h) + 4px) var(--gutter) 24px clamp(20px, 6vw, 96px);
-}
-.hero__kicker {
-  margin: 0; display: inline-flex; align-items: center; gap: 10px;
-  font-family: var(--font-ui); font-size: 12px; letter-spacing: .28em; text-transform: uppercase;
-  color: var(--holo);
-}
-.hero__kicker::before { content: ''; width: 34px; height: 1px; background: currentColor; box-shadow: 0 0 8px currentColor; }
-.hero__title { margin: 0; font-family: var(--font-ui); line-height: .95; }
-.hero__title-main {
-  display: block; white-space: nowrap; font-size: clamp(30px, min(4vw, 9vh), 72px); font-weight: 900; letter-spacing: .01em;
-  background: linear-gradient(180deg, #ffffff 0%, #e9d5ff 45%, #a855f7 100%);
+.kid__content > * { pointer-events: auto; }
+.kid__title { margin: 0; font-family: var(--font-ui); line-height: 1; }
+.kid__title-main {
+  display: block; white-space: nowrap; font-size: clamp(32px, min(4.4vw, 8.5vh), 76px); font-weight: 900; letter-spacing: .01em;
+  background: linear-gradient(180deg, #fff 0%, #e9d5ff 45%, #a855f7 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  background-attachment: scroll;
-  filter: drop-shadow(0 0 28px rgba(168,85,247,.45));
+  filter: drop-shadow(0 0 24px rgba(168,85,247,.45));
 }
-.hero__title-main span { display: inline-block; background: inherit; -webkit-background-clip: text; background-clip: text; color: transparent; }
-.hero__title-sub {
-  display: block; margin-top: 10px; font-size: clamp(16px, 2.3vw, 26px); font-weight: 600;
-  letter-spacing: .42em; text-transform: uppercase; color: var(--accent-3);
-}
-.hero__lead { margin: 0; max-width: 520px; font-size: clamp(16px, 1.5vw, 19px); line-height: 1.6; color: var(--muted); }
-.hero__lead b { color: var(--fg); font-weight: 600; }
+.kid__title-main span { display: inline-block; background: inherit; -webkit-background-clip: text; background-clip: text; color: transparent; }
+.kid__title-sub { display: inline-block; margin-top: 8px; padding: 6px 14px; border-radius: 999px; font-size: clamp(13px, 1.4vw, 16px); font-weight: 700; letter-spacing: .2em; color: #1a0b33; background: linear-gradient(90deg, #67e8f9, #c084fc); }
 
-.hero__console {
-  position: relative; max-width: 540px; padding: 14px 18px 12px;
-  border: 1px solid rgba(57,255,138,.28); border-radius: 12px;
-  background: linear-gradient(180deg, rgba(2,14,8,.82), rgba(2,10,6,.7));
-  box-shadow: inset 0 0 30px rgba(57,255,138,.06), 0 10px 40px rgba(0,0,0,.4);
-  backdrop-filter: blur(6px);
-  overflow: hidden;
-}
-.hero__console::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px);
-}
-.hero__console-bar {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-  font-family: var(--font-mono); font-size: 16px; color: var(--retro-amber); letter-spacing: .06em;
-}
-.hero__console-bar i { width: 8px; height: 8px; border-radius: 50%; background: var(--retro-green); box-shadow: var(--glow-green); animation: hero-blink 1.6s steps(2) infinite; }
-@keyframes hero-blink { 50% { opacity: .25; } }
-.hero__console-log { min-height: 75px; font-family: var(--font-mono); font-size: 20px; line-height: 1.25; color: var(--retro-green); text-shadow: 0 0 6px rgba(57,255,138,.45); }
-.hero__console-log p { margin: 0; }
-.hero__cursor { animation: hero-blink 1s steps(2) infinite; }
+/* ---- Bip + globo ---- */
+.kid__guide { display: flex; align-items: flex-end; gap: 14px; }
+.bip { position: relative; flex: none; width: clamp(96px, 11vw, 132px); cursor: pointer; border: 0; padding: 0; background: none; animation: bip-float 3.2s ease-in-out infinite; }
+.bip:focus-visible { outline: 3px solid var(--holo); outline-offset: 6px; border-radius: 20px; }
+.bip svg { display: block; width: 100%; height: auto; overflow: visible; }
+@keyframes bip-float { 50% { transform: translateY(-8px); } }
+.bip__eye { transform-box: fill-box; transform-origin: center; animation: bip-blink 4.5s infinite; }
+@keyframes bip-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+.bip__light { animation: bip-light 1.2s steps(2) infinite; }
+@keyframes bip-light { 50% { fill: #fde68a; } }
+.bip__arm { transform-box: fill-box; transform-origin: 20% 90%; }
+.bip.wave .bip__arm { animation: bip-wave .5s ease-in-out 3; }
+@keyframes bip-wave { 50% { transform: rotate(-35deg); } }
+.bip.jump { animation: bip-jump .5s var(--ease-spring); }
+@keyframes bip-jump { 40% { transform: translateY(-22px) rotate(-6deg); } }
 
-.hero__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
-.hero__start {
-  position: relative; display: inline-flex; align-items: center; gap: 14px;
-  padding: 18px 34px 18px 26px; border: 0; border-radius: 999px; overflow: hidden; cursor: pointer;
-  font-family: var(--font-ui); font-size: clamp(15px, 1.4vw, 18px); font-weight: 800; letter-spacing: .14em;
-  color: #fff;
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);
-  box-shadow: 0 0 0 1px rgba(233,213,255,.35) inset, 0 10px 30px rgba(124,58,237,.45), var(--glow);
-  transition: box-shadow .3s, filter .3s;
-  will-change: transform;
+.bubble {
+  position: relative; flex: 1; min-height: 100px; margin-bottom: 26px; padding: 14px 18px 30px;
+  border: 2px solid #c084fc; border-radius: 22px 22px 22px 6px;
+  font-size: clamp(15px, 1.35vw, 18px); line-height: 1.45; color: #1a0b33;
+  background: #fbf7ff; box-shadow: 0 10px 30px rgba(0,0,0,.4), 0 0 0 6px rgba(192,132,252,.15);
 }
-.hero__start:hover, .hero__start:focus-visible {
-  outline: none; filter: brightness(1.12);
-  box-shadow: 0 0 0 2px rgba(255,255,255,.6) inset, 0 14px 44px rgba(124,58,237,.65), 0 0 60px rgba(168,85,247,.7);
+.bubble::before { content: ''; position: absolute; left: -12px; bottom: 10px; border: 10px solid transparent; border-right: 14px solid #c084fc; border-left: 0; }
+.bubble::after { content: ''; position: absolute; left: -8px; bottom: 12px; border: 8px solid transparent; border-right: 11px solid #fbf7ff; border-left: 0; }
+.bubble__name { display: block; margin-bottom: 2px; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; color: #7c3aed; }
+.bubble__text b { color: #6d28d9; }
+.bubble__tools { position: absolute; right: 10px; bottom: -18px; display: flex; gap: 6px; }
+.bubble__btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 2px solid #c084fc; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; color: #4c1d95; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  transition: transform .15s var(--ease-spring), background .2s;
 }
-.hero__start:active { filter: brightness(.95); }
-.hero__start svg { width: 26px; height: 26px; flex: none; transition: transform .35s var(--ease-spring); }
-.hero__start:hover svg { transform: translate(4px,-4px) rotate(-8deg); }
-.hero__start::before {
-  content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
-  transform: skewX(-20deg); animation: hero-shine 3.2s ease-in-out infinite;
-}
-@keyframes hero-shine { 0%, 60% { left: -60%; } 100% { left: 130%; } }
-.hero__ripple {
-  position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%;
-  background: rgba(255,255,255,.6); pointer-events: none; animation: hero-ripple .6s ease-out forwards;
-}
-@keyframes hero-ripple { to { transform: scale(18); opacity: 0; } }
-.hero__ghost {
-  padding: 14px 20px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
-  font: inherit; font-size: 14px; color: var(--muted); background: rgba(20,14,44,.55); backdrop-filter: blur(6px);
-  transition: color .2s, border-color .2s;
-}
-.hero__ghost:hover, .hero__ghost:focus-visible { outline: none; color: var(--fg); border-color: var(--accent-2); }
-.hero__hint { margin: -6px 0 0; font-size: 13px; color: var(--dim); }
-.hero__hint kbd { padding: 1px 6px; border: 1px solid var(--line); border-radius: 5px; font-family: inherit; color: var(--muted); }
+.bubble__btn:hover, .bubble__btn:focus-visible { outline: none; transform: translateY(-2px) scale(1.04); background: #f3e8ff; }
+.bubble__btn svg { width: 16px; height: 16px; }
+.bubble__btn.speaking { background: #ede9fe; }
+.bubble__btn.speaking svg { animation: kid-tap .6s infinite; }
 
-.hero__robots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 6px 0 0; padding: 0; list-style: none; max-width: 600px; }
-.hero__robot {
-  position: relative; width: 100%; padding: 12px 12px 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px;
-  text-align: left; cursor: pointer; font: inherit; color: var(--fg);
-  background: rgba(14,10,32,.6); backdrop-filter: blur(6px);
-  transition: transform .3s var(--ease-out), border-color .3s, background .3s;
+/* ---- botón JUGAR ---- */
+.kid__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.kid__play {
+  position: relative; display: inline-flex; align-items: center; gap: 14px; overflow: hidden; cursor: pointer;
+  padding: 18px 40px 18px 28px; border: 0; border-radius: 999px;
+  font-family: var(--font-ui); font-size: clamp(20px, 2vw, 26px); font-weight: 900; letter-spacing: .12em; color: #fff;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 8px 0 #0f6b32, 0 14px 30px rgba(34,197,94,.45);
+  transition: transform .12s, box-shadow .12s, filter .2s; will-change: transform;
+  animation: kid-pulse 2.2s ease-in-out infinite;
 }
-.hero__robot:hover, .hero__robot:focus-visible { outline: none; transform: translateY(-4px); border-color: var(--c); background: rgba(24,16,52,.8); }
-.hero__robot-place { display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-.hero__robot-place i { width: 8px; height: 8px; border-radius: 50%; background: var(--b); box-shadow: 0 0 8px var(--b); }
-.hero__robot-name { display: block; margin: 6px 0 10px; font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1.3; }
-.hero__robot-bar { display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
-.hero__robot-bar s { display: block; height: 100%; width: var(--p); background: var(--c); box-shadow: 0 0 8px var(--c); }
-.hero__robot-count { position: absolute; top: 10px; right: 10px; font-family: var(--font-mono); font-size: 16px; color: var(--muted); }
+.kid__play:hover, .kid__play:focus-visible { outline: none; filter: brightness(1.1); }
+.kid__play:active { transform: translateY(6px) !important; box-shadow: 0 2px 0 #0f6b32, 0 6px 14px rgba(34,197,94,.4); }
+.kid__play svg { width: 30px; height: 30px; flex: none; }
+.kid__play::before { content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent); transform: skewX(-20deg); animation: kid-shine 3s ease-in-out infinite; }
+@keyframes kid-shine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+@keyframes kid-pulse { 0%, 100% { box-shadow: 0 8px 0 #0f6b32, 0 14px 30px rgba(34,197,94,.45); } 50% { box-shadow: 0 8px 0 #0f6b32, 0 14px 44px rgba(34,197,94,.8); } }
+.kid__rename { padding: 12px 16px; border: 2px solid var(--line); border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px; color: var(--muted); background: rgba(20,14,44,.6); }
+.kid__rename:hover, .kid__rename:focus-visible { outline: none; color: var(--fg); border-color: var(--accent-2); }
 
-.hero__scroll { position: absolute; right: var(--gutter); bottom: 18px; z-index: 2; font-family: var(--font-mono); font-size: 16px; color: var(--dim); letter-spacing: .1em; }
+/* ---- cómo se juega ---- */
+.kid__steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0; padding: 0; list-style: none; max-width: 580px; }
+.kid__step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; font-size: 14px; font-weight: 600; line-height: 1.25; color: var(--fg); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
+.kid__step i { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; font-style: normal; }
+.kid__step i svg { width: 22px; height: 22px; }
+.kid__step small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--muted); }
+
+/* ---- robots ---- */
+.kid__robots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; max-width: 600px; }
+.kid__robot {
+  position: relative; width: 100%; padding: 10px 10px 12px; border: 2px solid rgba(255,255,255,.1); border-radius: 18px; cursor: pointer;
+  text-align: center; font: inherit; color: var(--fg); background: rgba(14,10,32,.75);
+  transition: transform .25s var(--ease-spring), border-color .2s, background .2s;
+}
+.kid__robot:hover, .kid__robot:focus-visible { outline: none; transform: translateY(-6px) rotate(-1deg); border-color: var(--c); background: rgba(30,20,64,.9); }
+.kid__robot svg { width: 56px; height: 40px; margin: 0 auto 4px; display: block; }
+.kid__robot-name { display: block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; line-height: 1.25; min-height: 2.5em; }
+.kid__robot-place { display: inline-block; margin: 4px 0; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #1a0b33; background: var(--b); }
+.kid__robot-stars { display: block; font-size: 16px; letter-spacing: 2px; color: rgba(255,255,255,.18); }
+.kid__robot-stars b { color: #ffd166; font-weight: 400; text-shadow: 0 0 8px rgba(255,209,102,.7); }
+.kid__robot-badge { position: absolute; top: -8px; right: -6px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; color: #04140b; background: var(--ok); transform: rotate(6deg); }
+
+.kid__meteor { position: absolute; z-index: 1; width: 140px; height: 2px; border-radius: 2px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.9)); transform: rotate(-28deg); opacity: 0; animation: kid-meteor 1.1s ease-out forwards; }
+@keyframes kid-meteor { 0% { opacity: 0; translate: 0 0; } 15% { opacity: 1; } 100% { opacity: 0; translate: -420px 220px; } }
 
 @media (max-width: 900px) {
-  .hero__shade { background: linear-gradient(180deg, rgba(5,4,13,.35) 0%, rgba(5,4,13,.85) 55%, rgba(5,4,13,.95) 100%); }
-  .hero__content { width: 100%; justify-content: flex-end; padding-left: var(--gutter); }
-  .hero__robots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hero__scroll { display: none; }
+  .kid__shade { background: linear-gradient(180deg, rgba(5,4,13,.15) 0%, rgba(5,4,13,.8) 45%, rgba(5,4,13,.95) 100%); }
+  .kid__content { width: 100%; justify-content: flex-end; padding-left: var(--gutter); padding-top: 34vh; }
+  .kid__robots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kid__steps { display: none; }
+  .kid__content { gap: 14px; }
+  .bubble { font-size: 15px; }
+  .bubble__btn { padding: 6px 10px; font-size: 12px; }
+}
+@media (max-height: 760px) and (min-width: 901px) {
+  .kid__steps { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero__start::before, .hero__meteor, .hero__console-bar i, .hero__cursor { animation: none; }
+  .bip, .bip__eye, .bip__light, .kid__play, .kid__play::before, .kid__label svg, .kid__meteor { animation: none !important; }
 }
 `;
 
 function injectStyles(): void {
-  if (document.getElementById('home-styles')) return;
+  if (document.getElementById('kid-styles')) return;
   const s = document.createElement('style');
-  s.id = 'home-styles';
+  s.id = 'kid-styles';
   s.textContent = CSS;
   document.head.appendChild(s);
 }
 
-// ---------------------------------------------------------------- textura de la Tierra
+// ---------------------------------------------------------------- sonidos
+let audio: AudioContext | null = null;
+function tone(f1: number, f2: number, d: number, type: OscillatorType = 'sine', vol = 0.06, delay = 0): void {
+  try {
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    audio ??= new AC();
+    const t = audio.currentTime + delay;
+    const o = audio.createOscillator();
+    const g = audio.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + d);
+    o.connect(g).connect(audio.destination);
+    o.start(t);
+    o.stop(t + d + 0.02);
+  } catch {
+    /* sin audio */
+  }
+}
+const sfx = {
+  pop: () => tone(600, 1000, 0.1, 'sine', 0.05),
+  bip: () => {
+    tone(880, 1320, 0.08, 'square', 0.025);
+    tone(1320, 990, 0.1, 'square', 0.025, 0.09);
+  },
+  whoosh: () => tone(300, 900, 0.35, 'triangle', 0.05),
+  go: () => [523, 659, 784].forEach((f, i) => tone(f, f * 1.01, 0.2, 'triangle', 0.07, i * 0.08)),
+};
+
+// ---------------------------------------------------------------- texturas
 function createEarthTexture(): HTMLCanvasElement {
-  const w = 512;
-  const h = 256;
+  const w = 1024;
+  const h = 512;
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
   const ctx = c.getContext('2d')!;
   const img = ctx.createImageData(w, h);
   const noise = makeNoise(3);
+  const warp = makeNoise(17);
   const clouds = makeNoise(9);
+  const detail = makeNoise(29);
   for (let y = 0; y < h; y++) {
     const lat = Math.abs(y / h - 0.5) * 2;
     for (let x = 0; x < w; x++) {
       const u = (x / w) * 4;
       const v = (y / h) * 2;
-      const land = fbm(noise, u, v, 5, 4);
-      const cl = fbm(clouds, u * 2 + 5, v * 2, 4, 8);
+      // deformación del dominio → costas más naturales
+      const wu = u + (fbm(warp, u * 0.8, v * 0.8, 3, 3.2) - 0.5) * 1.2;
+      const land = fbm(noise, wu, v, 6, 4);
+      const det = fbm(detail, u * 6, v * 6, 3, 24);
+      const cl = fbm(clouds, u * 2.2 + 5, v * 2.6, 6, 8.8);
       let r: number;
       let g: number;
       let b: number;
-      if (lat > 0.86) [r, g, b] = [235, 240, 245];
-      else if (land > 0.53) {
-        const t = Math.min(1, (land - 0.53) * 5);
-        [r, g, b] = [70 + t * 90, 110 + t * 40, 50 + t * 30];
+      if (land > 0.52) {
+        const hgt = Math.min(1, (land - 0.52) * 6);
+        const dry = Math.max(0, Math.min(1, (0.35 - Math.abs(lat - 0.35)) * 3 + (det - 0.5)));
+        // bosque → pradera → desierto / montaña
+        r = 38 + hgt * 60 + dry * 120 + (det - 0.5) * 30;
+        g = 92 + hgt * 30 + dry * 60 + (det - 0.5) * 30;
+        b = 42 + hgt * 20 + dry * 30;
       } else {
-        const d = land / 0.53;
-        [r, g, b] = [14 + d * 20, 50 + d * 60, 120 + d * 70];
+        const depth = Math.min(1, (0.52 - land) * 6);
+        r = 18 + (1 - depth) * 30;
+        g = 58 + (1 - depth) * 70;
+        b = 120 + (1 - depth) * 60;
       }
-      const cw = Math.max(0, Math.min(1, (cl - 0.5) * 3.2));
+      if (lat > 0.82 + (det - 0.5) * 0.08) [r, g, b] = [236, 242, 248]; // polos
+      const cw = Math.max(0, Math.min(1, (cl - 0.54) * 4.5)) * 0.9;
       const i = (y * w + x) * 4;
       img.data[i] = r + (250 - r) * cw;
       img.data[i + 1] = g + (252 - g) * cw;
@@ -229,6 +292,31 @@ function createEarthTexture(): HTMLCanvasElement {
   }
   ctx.putImageData(img, 0, 0);
   return c;
+}
+
+function createMarsMaps(): { color: HTMLCanvasElement; bump: HTMLCanvasElement } {
+  const m = createMoonMaps(1024, 23);
+  const ctx = m.color.getContext('2d')!;
+  const { width: w, height: h } = m.color;
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = '#e0703a';
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.fillStyle = 'rgba(200,80,30,0.45)';
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'source-over';
+  // casquetes polares
+  for (const [y0, y1] of [
+    [0, h * 0.09],
+    [h, h * 0.93],
+  ]) {
+    const g = ctx.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, 'rgba(250,245,240,0.95)');
+    g.addColorStop(1, 'rgba(250,245,240,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, Math.min(y0, y1), w, Math.abs(y1 - y0));
+  }
+  return m;
 }
 
 function glowTexture(color: string): HTMLCanvasElement {
@@ -243,32 +331,31 @@ function glowTexture(color: string): HTMLCanvasElement {
   return c;
 }
 
-// ---------------------------------------------------------------- escena 3D
+// ---------------------------------------------------------------- escena 3D tocable
 interface Space {
   destroy(): void;
 }
 
-function createSpace(host: HTMLElement): Space | null {
+function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Planet) => void): Space | null {
   let renderer: WebGLRenderer;
   try {
     renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   } catch {
-    return null; // sin WebGL: queda el fondo degradado
+    return null;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.setClearColor(0x000000, 0);
   host.appendChild(renderer.domElement);
+  const canvas = renderer.domElement;
 
   const scene = new Scene();
   const camera = new PerspectiveCamera(35, 1, 0.1, 200);
   camera.position.set(0, 0, 7);
-
-  // luz del Sol rasante desde la izquierda + luz de la Tierra muy tenue
   const sun = new DirectionalLight(0xfff4e6, 3.2);
-  sun.position.set(-6, 1.8, 1.6);
+  sun.position.set(-6, 1.8, 2.4);
   scene.add(sun);
-  scene.add(new AmbientLight(0x6b7cff, 0.06));
+  scene.add(new AmbientLight(0x8a96ff, 0.07));
 
   // estrellas
   const rand = rng(42);
@@ -288,254 +375,477 @@ function createSpace(host: HTMLElement): Space | null {
   const stars = new Points(starGeo, starMat);
   scene.add(stars);
 
-  // Luna
-  const maps = createMoonMaps(1024);
-  const colorTex = new CanvasTexture(maps.color);
-  colorTex.colorSpace = SRGBColorSpace;
-  colorTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const bumpTex = new CanvasTexture(maps.bump);
-  const moonGeo = new SphereGeometry(1, 128, 96);
-  const moonMat = new MeshStandardMaterial({ map: colorTex, bumpMap: bumpTex, bumpScale: 2.4, roughness: 1, metalness: 0 });
-  const moon = new Mesh(moonGeo, moonMat);
-  moon.rotation.set(0.12, -0.6, 0.08);
-  const moonGroup = new Group();
-  moonGroup.add(moon);
-  // halo muy sutil (la Luna no tiene atmósfera, es solo resplandor de cámara)
-  const haloTex = new CanvasTexture(glowTexture('rgba(190,170,255,0.35)'));
-  const halo = new Sprite(new SpriteMaterial({ map: haloTex, blending: AdditiveBlending, depthWrite: false, transparent: true }));
-  halo.scale.set(3.1, 3.1, 1);
-  halo.position.z = -0.6;
-  moonGroup.add(halo);
-  scene.add(moonGroup);
+  const textures: CanvasTexture[] = [];
+  const geos: BufferGeometry[] = [];
+  const mats: { dispose(): void }[] = [starMat];
 
-  // Tierra lejana
-  const earthTex = new CanvasTexture(createEarthTexture());
-  earthTex.colorSpace = SRGBColorSpace;
-  const earthGeo = new SphereGeometry(1, 64, 48);
-  const earthMat = new MeshStandardMaterial({ map: earthTex, roughness: 0.75, metalness: 0 });
-  const earth = new Mesh(earthGeo, earthMat);
-  const earthGroup = new Group();
-  earthGroup.add(earth);
-  const atmoTex = new CanvasTexture(glowTexture('rgba(96,165,250,0.75)'));
-  const atmo = new Sprite(new SpriteMaterial({ map: atmoTex, blending: AdditiveBlending, depthWrite: false, transparent: true }));
-  atmo.scale.set(2.9, 2.9, 1);
-  earthGroup.add(atmo);
-  earthGroup.scale.setScalar(0.24);
-  scene.add(earthGroup);
+  const makePlanet = (maps: { color: HTMLCanvasElement; bump?: HTMLCanvasElement }, bumpScale: number, glow: string, glowSize: number) => {
+    const map = new CanvasTexture(maps.color);
+    map.colorSpace = SRGBColorSpace;
+    map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    textures.push(map);
+    let bumpMap: CanvasTexture | null = null;
+    if (maps.bump) {
+      bumpMap = new CanvasTexture(maps.bump);
+      textures.push(bumpMap);
+    }
+    const geo = new SphereGeometry(1, 96, 72);
+    geos.push(geo);
+    const mat = new MeshStandardMaterial({ map, bumpMap, bumpScale, roughness: 1, metalness: 0 });
+    mats.push(mat);
+    const mesh = new Mesh(geo, mat);
+    const group = new Group();
+    group.add(mesh);
+    const gt = new CanvasTexture(glowTexture(glow));
+    textures.push(gt);
+    const sm = new SpriteMaterial({ map: gt, blending: AdditiveBlending, depthWrite: false, transparent: true });
+    mats.push(sm);
+    const halo = new Sprite(sm);
+    halo.scale.set(glowSize, glowSize, 1);
+    halo.position.z = -0.5;
+    group.add(halo);
+    scene.add(group);
+    return { group, mesh, mat, halo };
+  };
 
-  // distribución según pantalla
-  let baseMoonY = 0;
+  const moon = makePlanet(createMoonMaps(1024), 2.4, 'rgba(190,170,255,0.35)', 3.1);
+  moon.mesh.rotation.set(0.12, -0.6, 0.08);
+  const mars = makePlanet(createMarsMaps(), 2, 'rgba(255,140,90,0.45)', 3.1);
+  const earth = makePlanet({ color: createEarthTexture() }, 0, 'rgba(96,165,250,0.6)', 2.6);
+  earth.mat.roughness = 0.75;
+
+  const planets: { id: Planet; p: typeof moon; base: number; spin: number }[] = [
+    { id: 'moon', p: moon, base: 1, spin: 0.035 },
+    { id: 'mars', p: mars, base: 1, spin: 0.06 },
+    { id: 'earth', p: earth, base: 1, spin: 0.08 },
+  ];
+
+  // etiquetas tocables
+  const HAND = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10V3.5a1.5 1.5 0 0 1 3 0V10V5a1.5 1.5 0 0 1 3 0v8.5c0 4-2.6 7.5-7 7.5-3 0-4.6-1.4-6-3.6L3 13.3a1.6 1.6 0 0 1 2.6-1.8L9 15z"/></svg>';
+  const labels = new Map<Planet, HTMLElement>();
+  planets.forEach(({ id }) => {
+    const el = document.createElement('div');
+    el.className = 'kid__label';
+    el.innerHTML = `${HAND}${PLANET_INFO[id].label}`;
+    labelsHost.appendChild(el);
+    labels.set(id, el);
+  });
+
+  // 3 lugares: 0 = grande (protagonista), 1 = mediano, 2 = pequeño
+  const slotOf: Record<Planet, number> = { moon: 0, mars: 1, earth: 2 };
+  let slots: { pos: Vector3; scale: number }[] = [];
+  const computeSlots = () => {
+    const w = host.clientWidth || window.innerWidth;
+    const h = host.clientHeight || window.innerHeight;
+    const wide = w / h > 1.05;
+    const halfW = Math.tan((camera.fov * Math.PI) / 360) * camera.position.z * camera.aspect;
+    slots = wide
+      ? [
+          { pos: new Vector3(halfW * 0.52, -0.15, 0), scale: 1.6 },
+          { pos: new Vector3(halfW * 0.1, -1.35, -1.2), scale: 0.42 },
+          { pos: new Vector3(halfW * 0.06, 1.45, -3), scale: 0.3 },
+        ]
+      : [
+          { pos: new Vector3(halfW * 0.4, 1.05, 0), scale: 0.6 },
+          { pos: new Vector3(-halfW * 0.5, 0.75, -1.2), scale: 0.32 },
+          { pos: new Vector3(-halfW * 0.6, 2.0, -3), scale: 0.24 },
+        ];
+  };
+
   const layout = () => {
     const w = host.clientWidth || window.innerWidth;
     const h = host.clientHeight || window.innerHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    const wide = w / h > 1.05;
-    const halfW = Math.tan((camera.fov * Math.PI) / 360) * camera.position.z * camera.aspect;
-    if (wide) {
-      moonGroup.scale.setScalar(1.75);
-      moonGroup.position.set(halfW * 0.48, -0.1, 0);
-      earthGroup.position.set(halfW * 0.05, 1.55, -4);
-    } else {
-      moonGroup.scale.setScalar(1.55);
-      moonGroup.position.set(0.2, 1.05, 0);
-      earthGroup.position.set(-halfW * 0.55, 2.4, -4);
+    computeSlots();
+    planets.forEach((pl) => {
+      const sl = slots[slotOf[pl.id]];
+      gsap.killTweensOf([pl.p.group.position, pl.p.group.scale]);
+      pl.p.group.position.copy(sl.pos);
+      pl.base = sl.scale;
+      pl.p.group.scale.setScalar(pl.base);
+    });
+  };
+
+  /** Lleva el planeta tocado al lugar grande; el que estaba allí ocupa su lugar. */
+  const feature = (id: Planet) => {
+    const from = slotOf[id];
+    if (from === 0) return;
+    const other = planets.find((pl) => slotOf[pl.id] === 0)!;
+    slotOf[other.id] = from;
+    slotOf[id] = 0;
+    const d = reducedMotion ? 0.3 : 1.3;
+    for (const pl of [planets.find((p) => p.id === id)!, other]) {
+      const sl = slots[slotOf[pl.id]];
+      pl.base = sl.scale;
+      const g = pl.p.group;
+      gsap.killTweensOf([g.position, g.scale]);
+      // viaje en arco: sube un poco a mitad de camino
+      const mid = g.position.clone().lerp(sl.pos, 0.5);
+      mid.y += pl.id === id ? 0.6 : -0.4;
+      gsap.timeline()
+        .to(g.position, { x: mid.x, y: mid.y, z: Math.max(g.position.z, sl.pos.z) + 0.5, duration: d / 2, ease: 'power2.in' })
+        .to(g.position, { x: sl.pos.x, y: sl.pos.y, z: sl.pos.z, duration: d / 2, ease: 'power2.out' });
+      gsap.to(g.scale, { x: sl.scale, y: sl.scale, z: sl.scale, duration: d, ease: 'power3.inOut' });
     }
-    baseMoonY = moonGroup.position.y;
   };
   layout();
   const ro = new ResizeObserver(layout);
   ro.observe(host);
 
-  // parallax con el puntero
+  // interacción: hover y toque
+  const ray = new Raycaster();
+  const ndc = new Vector2();
+  let hovered: Planet | null = null;
+  const pickAt = (cx: number, cy: number): Planet | null => {
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hits = ray.intersectObjects(planets.map((p) => p.p.mesh), false);
+    if (!hits.length) return null;
+    return planets.find((p) => p.p.mesh === hits[0].object)?.id ?? null;
+  };
   let mx = 0;
   let my = 0;
   const onMove = (e: PointerEvent) => {
     mx = e.clientX / window.innerWidth - 0.5;
     my = e.clientY / window.innerHeight - 0.5;
+    if (e.target !== canvas) {
+      if (hovered) setHover(null);
+      return;
+    }
+    setHover(pickAt(e.clientX, e.clientY));
+  };
+  const setHover = (id: Planet | null) => {
+    if (id === hovered) return;
+    hovered = id;
+    canvas.style.cursor = id ? 'pointer' : 'default';
+    planets.forEach((pl) => {
+      const on = pl.id === id;
+      if (!gsap.isTweening(pl.p.group.position)) {
+        gsap.to(pl.p.group.scale, { x: pl.base * (on ? 1.06 : 1), y: pl.base * (on ? 1.06 : 1), z: pl.base * (on ? 1.06 : 1), duration: 0.35, ease: 'back.out(2)' });
+      }
+      labels.get(pl.id)!.classList.toggle('hover', on);
+    });
+    if (id) sfx.pop();
+  };
+  const onClick = (e: MouseEvent) => {
+    const id = pickAt(e.clientX, e.clientY);
+    if (!id) return;
+    const pl = planets.find((p) => p.id === id)!;
+    gsap.to(pl.p.mesh.rotation, { y: pl.p.mesh.rotation.y + Math.PI * 2, duration: reducedMotion ? 0.3 : 1.6, ease: 'power3.inOut' });
+    if (slotOf[id] === 0) {
+      gsap.fromTo(pl.p.group.scale, { x: pl.base * 1.08, y: pl.base * 1.08, z: pl.base * 1.08 }, { x: pl.base, y: pl.base, z: pl.base, duration: 0.6, ease: 'elastic.out(1, 0.4)' });
+    } else {
+      feature(id);
+    }
+    sfx.whoosh();
+    onPick(id);
   };
   window.addEventListener('pointermove', onMove);
+  canvas.addEventListener('click', onClick);
 
+  // bucle
   let raf = 0;
   let last = performance.now();
   let t = 0;
+  const v = new Vector3();
   const frame = (now: number) => {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     t += dt;
     if (!reducedMotion) {
-      moon.rotation.y += dt * 0.035;
-      earth.rotation.y += dt * 0.08;
+      planets.forEach((pl) => (pl.p.mesh.rotation.y += dt * pl.spin));
       stars.rotation.z += dt * 0.004;
-      moonGroup.position.y = baseMoonY + Math.sin(t * 0.5) * 0.04;
-      camera.position.x += (mx * 0.6 - camera.position.x) * 0.04;
-      camera.position.y += (-my * 0.4 - camera.position.y) * 0.04;
+      camera.position.x += (mx * 0.5 - camera.position.x) * 0.04;
+      camera.position.y += (-my * 0.35 - camera.position.y) * 0.04;
       camera.lookAt(0, 0, 0);
     }
     renderer.render(scene, camera);
+    // posicionar etiquetas sobre cada planeta
+    const rect = canvas.getBoundingClientRect();
+    planets.forEach((pl) => {
+      v.copy(pl.p.group.position);
+      v.y += pl.p.group.scale.y * 1.08;
+      v.project(camera);
+      const el = labels.get(pl.id)!;
+      const x = (v.x * 0.5 + 0.5) * rect.width;
+      const y = (-v.y * 0.5 + 0.5) * rect.height;
+      const visible = v.z < 1 && x > 20 && x < rect.width - 20 && y > 96 && y < rect.height - 10;
+      el.style.display = visible ? '' : 'none';
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+    });
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
-  requestAnimationFrame(() => renderer.domElement.classList.add('on'));
+  requestAnimationFrame(() => canvas.classList.add('on'));
 
   return {
     destroy() {
       cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener('pointermove', onMove);
-      [starGeo, moonGeo, earthGeo].forEach((g) => g.dispose());
-      [starMat, moonMat, earthMat, halo.material, atmo.material].forEach((m) => m.dispose());
-      [colorTex, bumpTex, earthTex, haloTex, atmoTex].forEach((tx) => tx.dispose());
+      canvas.removeEventListener('click', onClick);
+      planets.forEach((pl) => gsap.killTweensOf([pl.p.mesh.rotation, pl.p.group.scale]));
+      geos.forEach((g) => g.dispose());
+      starGeo.dispose();
+      mats.forEach((m) => m.dispose());
+      textures.forEach((tx) => tx.dispose());
+      labels.forEach((el) => el.remove());
       renderer.dispose();
       renderer.forceContextLoss();
-      renderer.domElement.remove();
+      canvas.remove();
     },
   };
 }
+
+// ---------------------------------------------------------------- Bip (robot guía original)
+const BIP_SVG = `
+<svg viewBox="0 0 140 170" aria-hidden="true">
+  <defs>
+    <linearGradient id="bipBody" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f3ff"/><stop offset="1" stop-color="#c4b5fd"/></linearGradient>
+    <linearGradient id="bipVisor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e1b4b"/><stop offset="1" stop-color="#0b0820"/></linearGradient>
+  </defs>
+  <ellipse cx="70" cy="164" rx="34" ry="5" fill="rgba(0,0,0,.35)"/>
+  <!-- antena -->
+  <line x1="70" y1="22" x2="70" y2="8" stroke="#a78bfa" stroke-width="4" stroke-linecap="round"/>
+  <circle class="bip__light" cx="70" cy="7" r="6" fill="#f472b6"/>
+  <!-- brazos -->
+  <g class="bip__arm-left"><path d="M26 104 Q10 112 14 130" stroke="#a78bfa" stroke-width="9" fill="none" stroke-linecap="round"/><circle cx="14" cy="132" r="7" fill="#ddd6fe"/></g>
+  <g class="bip__arm"><path d="M114 104 Q132 92 130 74" stroke="#a78bfa" stroke-width="9" fill="none" stroke-linecap="round"/><circle cx="130" cy="70" r="8" fill="#ddd6fe"/></g>
+  <!-- cuerpo -->
+  <rect x="34" y="92" width="72" height="58" rx="22" fill="url(#bipBody)" stroke="#7c3aed" stroke-width="3"/>
+  <circle cx="70" cy="120" r="11" fill="#67e8f9" stroke="#0e7490" stroke-width="3"/>
+  <circle cx="66" cy="116" r="3" fill="#fff"/>
+  <!-- cabeza -->
+  <rect x="18" y="22" width="104" height="76" rx="34" fill="url(#bipBody)" stroke="#7c3aed" stroke-width="3"/>
+  <rect x="30" y="36" width="80" height="48" rx="22" fill="url(#bipVisor)"/>
+  <g class="bip__eyes">
+    <ellipse class="bip__eye" cx="54" cy="60" rx="8" ry="10" fill="#67e8f9"/>
+    <ellipse class="bip__eye" cx="86" cy="60" rx="8" ry="10" fill="#67e8f9"/>
+    <circle cx="57" cy="56" r="3" fill="#fff"/><circle cx="89" cy="56" r="3" fill="#fff"/>
+  </g>
+  <path d="M60 74 Q70 81 80 74" stroke="#67e8f9" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse cx="36" cy="70" rx="6" ry="4" fill="#f472b6" opacity=".55"/>
+  <ellipse cx="104" cy="70" rx="6" ry="4" fill="#f472b6" opacity=".55"/>
+</svg>`;
+
+/** Icono de rover genérico (original), coloreado con el acento del robot. */
+const roverIcon = (color: string) => `
+<svg viewBox="0 0 56 40" aria-hidden="true">
+  <rect x="12" y="10" width="32" height="14" rx="4" fill="${color}" opacity=".9"/>
+  <rect x="18" y="4" width="3" height="8" fill="#c9ccd3"/><circle cx="19.5" cy="4" r="3.5" fill="#c9ccd3"/>
+  <rect x="8" y="22" width="40" height="3" rx="1.5" fill="#8b8fa3"/>
+  <circle cx="13" cy="31" r="6" fill="#2b2d33" stroke="#c9ccd3" stroke-width="2"/>
+  <circle cx="28" cy="31" r="6" fill="#2b2d33" stroke="#c9ccd3" stroke-width="2"/>
+  <circle cx="43" cy="31" r="6" fill="#2b2d33" stroke="#c9ccd3" stroke-width="2"/>
+</svg>`;
+
+const ICONS = {
+  build: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a0b33" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>',
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a0b33" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>',
+  medal: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a0b33" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="6"/><path d="M8.5 9.5 6 2h4l2 4 2-4h4l-2.5 7.5"/></svg>',
+  speak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>',
+};
 
 // ---------------------------------------------------------------- pantalla
 const home: ScreenFactory = ({ root, go }) => {
   injectStyles();
   const state = getState();
   const name = state.name;
-  const lines = [
-    name ? `Bienvenido de nuevo, ${name}.` : 'Bienvenido, astronauta.',
-    'Enlace con la Luna y Marte: ESTABLE.',
-    '4 exploradores esperan tu misión. Sistemas listos.',
-  ];
 
   const robotCards = ALL_ROBOTS.map((id) => {
     const r = ROBOTS[id];
     const done = state.levels[id].filter(Boolean).length;
-    const place = r.body === 'moon' ? 'Luna' : 'Marte';
-    const bodyColor = r.body === 'moon' ? '#c9ccd3' : '#d9653b';
+    const moonBody = r.body === 'moon';
+    const stars = `${'<b>★</b>'.repeat(done)}${'★'.repeat(4 - done)}`;
+    const badge = done === 4 ? '<span class="kid__robot-badge">¡Listo!</span>' : '';
     return `
       <li>
-        <button type="button" class="hero__robot" data-robot style="--c:${r.accent};--b:${bodyColor};--p:${(done / 4) * 100}%">
-          <span class="hero__robot-place"><i></i>${place}</span>
-          <span class="hero__robot-name">${esc(r.name)}</span>
-          <span class="hero__robot-bar"><s></s></span>
-          <span class="hero__robot-count">${done}/4</span>
+        <button type="button" class="kid__robot" data-robot style="--c:${r.accent};--b:${moonBody ? '#d4d6dc' : '#f08a55'}" aria-label="${esc(r.name)}, ${done} de 4 niveles">
+          ${badge}${roverIcon(r.accent)}
+          <span class="kid__robot-name">${esc(r.name)}</span>
+          <span class="kid__robot-place">${moonBody ? 'LUNA' : 'MARTE'}</span>
+          <span class="kid__robot-stars" aria-hidden="true">${stars}</span>
         </button>
       </li>`;
   }).join('');
 
   root.innerHTML = `
-    <section class="hero">
-      <div class="hero__space" aria-hidden="true"></div>
-      <div class="hero__shade" aria-hidden="true"></div>
-      <div class="hero__content">
-        <p class="hero__kicker">Misión educativa · Exploración robótica</p>
-        <h1 class="hero__title">
-          <span class="hero__title-main" aria-label="GalaxyCore">${'GalaxyCore'.split('').map((c) => `<span>${c}</span>`).join('')}</span>
-          <span class="hero__title-sub">Misión Robots</span>
+    <section class="kid">
+      <div class="kid__space"></div>
+      <div class="kid__shade" aria-hidden="true"></div>
+      <div class="kid__labels" aria-hidden="true"></div>
+      <div class="kid__content">
+        <h1 class="kid__title">
+          <span class="kid__title-main" aria-label="GalaxyCore">${'GalaxyCore'.split('').map((c) => `<span>${c}</span>`).join('')}</span>
+          <span class="kid__title-sub">MISIÓN ROBOTS</span>
         </h1>
-        <p class="hero__lead">Reconstruye los robots que exploraron <b>la Luna y Marte</b>, recorre sus rutas reales y supera <b>16 pruebas</b> para ganar tu certificado de astronauta.</p>
-        <div class="hero__console">
-          <div class="hero__console-bar"><i></i>GALAXYCORE OS v2.0 · ENLACE ORBITAL</div>
-          <div class="hero__console-log" role="log" aria-live="polite"></div>
+        <div class="kid__guide">
+          <button type="button" class="bip wave" data-bip aria-label="Bip, tu robot guía. Tócalo para un dato curioso">${BIP_SVG}</button>
+          <div class="bubble" role="status" aria-live="polite">
+            <span class="bubble__name">BIP · TU ROBOT GUÍA</span>
+            <span class="bubble__text" data-say></span>
+            <div class="bubble__tools">
+              <button type="button" class="bubble__btn" data-voice>${ICONS.speak}Escuchar</button>
+              <button type="button" class="bubble__btn" data-fact>${ICONS.next}Otro dato</button>
+            </div>
+          </div>
         </div>
-        <div class="hero__actions">
-          <button class="hero__start" type="button" data-start>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-              <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-              <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-            </svg>
-            INICIAR MISIÓN
-          </button>
-          ${name ? `<button class="hero__ghost" type="button" data-rename>Cambiar nombre (${esc(name)})</button>` : ''}
+        <div class="kid__actions">
+          <button type="button" class="kid__play" data-start>${ICONS.play}¡JUGAR!</button>
+          ${name ? `<button type="button" class="kid__rename" data-rename>No soy ${esc(name)}</button>` : ''}
         </div>
-        <p class="hero__hint">o pulsa <kbd>Enter</kbd></p>
-        <ul class="hero__robots" aria-label="Robots de la misión">${robotCards}</ul>
+        <ol class="kid__steps" aria-label="Cómo se juega">
+          <li class="kid__step"><i style="background:#67e8f9">${ICONS.build}</i><span><small>PASO 1</small>Arma el robot</span></li>
+          <li class="kid__step"><i style="background:#fcd34d">${ICONS.map}</i><span><small>PASO 2</small>Viaja por su mapa</span></li>
+          <li class="kid__step"><i style="background:#86efac">${ICONS.medal}</i><span><small>PASO 3</small>Gana tu certificado</span></li>
+        </ol>
+        <ul class="kid__robots" aria-label="Robots de la misión">${robotCards}</ul>
       </div>
-      <p class="hero__scroll" aria-hidden="true">LAT 0.67° N · LON 23.47° E</p>
     </section>`;
 
-  const section = root.querySelector<HTMLElement>('.hero')!;
-  const spaceHost = root.querySelector<HTMLElement>('.hero__space')!;
-  const log = root.querySelector<HTMLElement>('.hero__console-log')!;
-  const startBtn = root.querySelector<HTMLButtonElement>('[data-start]')!;
-
-  // ---------- escena 3D (se crea tras pintar el texto para no retrasarlo) ----------
-  let space: Space | null = null;
+  const section = root.querySelector<HTMLElement>('.kid')!;
+  const spaceHost = root.querySelector<HTMLElement>('.kid__space')!;
+  const labelsHost = root.querySelector<HTMLElement>('.kid__labels')!;
+  const sayEl = root.querySelector<HTMLElement>('[data-say]')!;
+  const bip = root.querySelector<HTMLButtonElement>('[data-bip]')!;
+  const voiceBtn = root.querySelector<HTMLButtonElement>('[data-voice]')!;
+  const playBtn = root.querySelector<HTMLButtonElement>('[data-start]')!;
   let alive = true;
+
+  // ---------- Bip habla ----------
+  let typeTimer = 0;
+  let current = '';
+  const synth: SpeechSynthesis | undefined = 'speechSynthesis' in window ? window.speechSynthesis : undefined;
+  if (!synth) voiceBtn.hidden = true;
+
+  const say = (text: string) => {
+    current = text;
+    window.clearTimeout(typeTimer);
+    synth?.cancel();
+    voiceBtn.classList.remove('speaking');
+    if (reducedMotion) {
+      sayEl.textContent = text;
+      return;
+    }
+    let i = 0;
+    sayEl.textContent = '';
+    const step = () => {
+      if (!alive) return;
+      sayEl.textContent = text.slice(0, ++i);
+      if (i % 3 === 0) tone(700 + Math.random() * 300, 600, 0.03, 'square', 0.012);
+      if (i < text.length) typeTimer = window.setTimeout(step, 22);
+    };
+    step();
+  };
+
+  const speak = () => {
+    if (!synth || !current) return;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(current);
+    u.lang = 'es-ES';
+    const voices = synth.getVoices();
+    const v = voices.find((x) => x.lang.startsWith('es') && /mx|us|419/i.test(x.lang)) ?? voices.find((x) => x.lang.startsWith('es'));
+    if (v) u.voice = v;
+    u.rate = 1;
+    u.pitch = 1.35;
+    u.onstart = () => voiceBtn.classList.add('speaking');
+    u.onend = u.onerror = () => voiceBtn.classList.remove('speaking');
+    synth.speak(u);
+  };
+  synth?.getVoices();
+
+  const greeting = name
+    ? `¡Hola de nuevo, ${name}! Soy Bip. Toca ¡JUGAR! para seguir tu misión, o toca un planeta para aprender algo nuevo.`
+    : '¡Hola, astronauta! Soy Bip, tu robot guía. Vamos a armar robots que exploraron la Luna y Marte. ¡Toca JUGAR!';
+  const greetTimer = window.setTimeout(() => say(greeting), reducedMotion ? 0 : 900);
+
+  let factIdx = 0;
+  const nextFact = () => {
+    say(FACTS[factIdx % FACTS.length]);
+    factIdx++;
+  };
+
+  bip.addEventListener('click', () => {
+    bip.classList.remove('jump', 'wave');
+    void bip.offsetWidth;
+    bip.classList.add('jump');
+    sfx.bip();
+    nextFact();
+  });
+  bip.addEventListener('animationend', (e) => {
+    if ((e as AnimationEvent).animationName === 'bip-jump') bip.classList.remove('jump');
+  });
+  root.querySelector('[data-fact]')!.addEventListener('click', () => {
+    sfx.pop();
+    nextFact();
+  });
+  voiceBtn.addEventListener('click', () => {
+    sfx.pop();
+    speak();
+  });
+
+  // ojos que siguen el puntero
+  const eyes = bip.querySelector<SVGGElement>('.bip__eyes')!;
+  const onEyes = (e: PointerEvent) => {
+    const r = bip.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height * 0.35);
+    const d = Math.hypot(dx, dy) || 1;
+    const k = Math.min(1, d / 300);
+    eyes.setAttribute('transform', `translate(${((dx / d) * 6 * k).toFixed(1)} ${((dy / d) * 4 * k).toFixed(1)})`);
+  };
+  window.addEventListener('pointermove', onEyes);
+
+  // ---------- escena 3D ----------
+  let space: Space | null = null;
   const spaceTimer = window.setTimeout(() => {
-    if (alive) space = createSpace(spaceHost);
+    if (alive) {
+      space = createSpace(spaceHost, labelsHost, (p) => {
+        bip.classList.remove('jump');
+        void bip.offsetWidth;
+        bip.classList.add('jump');
+        say(PLANET_INFO[p].say);
+      });
+    }
   }, 60);
 
-  // ---------- consola con máquina de escribir ----------
-  let timer = 0;
-  let li = 0;
-  let ci = 0;
-  let lineEl: HTMLParagraphElement | null = null;
-  const cursor = document.createElement('span');
-  cursor.className = 'hero__cursor';
-  cursor.textContent = '█';
-  const type = () => {
-    if (!alive) return;
-    if (li >= lines.length) return;
-    if (!lineEl) {
-      lineEl = document.createElement('p');
-      lineEl.textContent = '> ';
-      log.appendChild(lineEl);
-      lineEl.appendChild(cursor);
-    }
-    const line = lines[li];
-    if (ci < line.length) {
-      cursor.before(document.createTextNode(line[ci++]));
-      timer = window.setTimeout(type, CHAR_MS);
-    } else {
-      li++;
-      ci = 0;
-      if (li < lines.length) lineEl = null;
-      timer = window.setTimeout(type, LINE_PAUSE_MS);
-    }
-  };
-  if (reducedMotion) {
-    log.innerHTML = lines.map((l) => `<p>&gt; ${esc(l)}</p>`).join('');
-  } else timer = window.setTimeout(type, 700);
-
-  // ---------- animación de entrada ----------
+  // ---------- entrada ----------
   const tl = gsap.timeline();
   if (!reducedMotion) {
-    tl.from('.hero__kicker', { opacity: 0, x: -20, duration: 0.6, ease: 'power2.out' })
-      .from('.hero__title-main span', { opacity: 0, y: 40, rotateX: -80, duration: 0.7, stagger: 0.05, ease: 'back.out(1.8)' }, '-=0.3')
-      .from('.hero__title-sub', { opacity: 0, letterSpacing: '0.9em', duration: 0.8, ease: 'power2.out' }, '-=0.4')
-      .from(['.hero__lead', '.hero__console', '.hero__actions', '.hero__hint'], { opacity: 0, y: 18, duration: 0.6, stagger: 0.1, ease: 'power2.out' }, '-=0.5')
-      .from('.hero__robot', { opacity: 0, y: 20, duration: 0.5, stagger: 0.08, ease: 'power2.out' }, '-=0.3');
+    tl.from('.kid__title-main span', { opacity: 0, y: 40, rotateX: -80, duration: 0.6, stagger: 0.04, ease: 'back.out(1.8)' })
+      .from('.kid__title-sub', { opacity: 0, scale: 0.6, duration: 0.4, ease: 'back.out(2)' }, '-=0.2')
+      .from('.bip', { opacity: 0, x: -60, rotate: -20, duration: 0.6, ease: 'back.out(1.6)' }, '-=0.1')
+      .from('.bubble', { opacity: 0, scale: 0.8, transformOrigin: '0% 100%', duration: 0.4, ease: 'back.out(2)' }, '-=0.3')
+      .from(['.kid__actions', '.kid__step', '.kid__robot'], { opacity: 0, y: 20, duration: 0.45, stagger: 0.06, ease: 'power2.out' }, '-=0.2');
   }
 
-  // ---------- botón INICIAR: efecto magnético + onda ----------
-  const start = () => go(getState().name ? 'podiums' : 'name');
-  const onBtnMove = (e: PointerEvent) => {
-    if (reducedMotion) return;
-    const r = startBtn.getBoundingClientRect();
-    const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
-    const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
-    gsap.to(startBtn, { x: dx * 14, y: dy * 10, duration: 0.3, ease: 'power2.out' });
+  // ---------- JUGAR ----------
+  const start = () => {
+    sfx.go();
+    gsap.to(playBtn, { scale: 1.08, duration: 0.12, yoyo: true, repeat: 1 });
+    window.setTimeout(() => go(getState().name ? 'podiums' : 'name'), reducedMotion ? 0 : 320);
   };
-  const onBtnLeave = () => gsap.to(startBtn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.4)' });
-  startBtn.addEventListener('pointermove', onBtnMove);
-  startBtn.addEventListener('pointerleave', onBtnLeave);
-  startBtn.addEventListener('click', (e) => {
-    const r = startBtn.getBoundingClientRect();
-    const rip = document.createElement('span');
-    rip.className = 'hero__ripple';
-    rip.style.left = `${(e.clientX || r.left + r.width / 2) - r.left}px`;
-    rip.style.top = `${(e.clientY || r.top + r.height / 2) - r.top}px`;
-    startBtn.appendChild(rip);
-    gsap.to(startBtn, { scale: 0.94, duration: 0.1, yoyo: true, repeat: 1 });
-    window.setTimeout(start, reducedMotion ? 0 : 380);
+  playBtn.addEventListener('click', start);
+  playBtn.addEventListener('pointerenter', () => {
+    sfx.pop();
+    if (!current.startsWith('¡Vamos')) say('¡Vamos! Toca el botón verde para empezar la aventura.');
   });
   root.querySelector('[data-rename]')?.addEventListener('click', () => go('name'));
-  root.querySelectorAll('[data-robot]').forEach((b) => b.addEventListener('click', start));
+  root.querySelectorAll<HTMLButtonElement>('[data-robot]').forEach((b) => {
+    b.addEventListener('pointerenter', () => sfx.pop());
+    b.addEventListener('click', start);
+  });
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && document.activeElement === document.body) {
       e.preventDefault();
-      startBtn.click();
+      start();
     }
   };
   document.addEventListener('keydown', onKey);
@@ -545,24 +855,27 @@ const home: ScreenFactory = ({ root, go }) => {
   const meteor = () => {
     if (!alive) return;
     const m = document.createElement('span');
-    m.className = 'hero__meteor';
-    m.style.left = `${30 + Math.random() * 65}%`;
+    m.className = 'kid__meteor';
+    m.style.left = `${35 + Math.random() * 60}%`;
     m.style.top = `${Math.random() * 40}%`;
     section.appendChild(m);
     window.setTimeout(() => m.remove(), 1300);
-    meteorTimer = window.setTimeout(meteor, 3500 + Math.random() * 5000);
+    meteorTimer = window.setTimeout(meteor, 4000 + Math.random() * 5000);
   };
-  if (!reducedMotion) meteorTimer = window.setTimeout(meteor, 2500);
+  if (!reducedMotion) meteorTimer = window.setTimeout(meteor, 3000);
 
   return {
     unmount() {
       alive = false;
-      window.clearTimeout(timer);
+      window.clearTimeout(typeTimer);
+      window.clearTimeout(greetTimer);
       window.clearTimeout(spaceTimer);
       window.clearTimeout(meteorTimer);
+      window.removeEventListener('pointermove', onEyes);
       document.removeEventListener('keydown', onKey);
+      synth?.cancel();
       tl.kill();
-      gsap.killTweensOf(startBtn);
+      gsap.killTweensOf(playBtn);
       space?.destroy();
     },
   };
