@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="NASA Space Apps (marcador de posición)">
+  <title>NASA Space Apps (marcador de posición)</title>
+  <defs>
+    <radialGradient id="g" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#2a1a5e"/>
+      <stop offset="1" stop-color="#0b0820"/>
+    </radialGradient>
+    <path id="arcTop" d="M20,60 A40,40 0 0 1 100,60"/>
+    <path id="arcBottom" d="M16,60 A44,44 0 0 0 104,60"/>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#g)" stroke="#c084fc" stroke-width="3"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#c084fc" stroke-opacity="0.35" stroke-width="1"/>
+  <ellipse cx="60" cy="60" rx="30" ry="10" fill="none" stroke="#e9d5ff" stroke-width="1.6" stroke-opacity="0.7" transform="rotate(-20 60 60)"/>
+  <circle cx="60" cy="60" r="11" fill="#a855f7"/>
+  <circle cx="86" cy="50" r="2.6" fill="#fff"/>
+  <circle cx="38" cy="38" r="1.2" fill="#fff" opacity="0.8"/>
+  <circle cx="80" cy="84" r="1" fill="#fff" opacity="0.7"/>
+  <text font-family="Orbitron, Arial, sans-serif" font-size="13" font-weight="700" fill="#ffffff" letter-spacing="2">
+    <textPath href="#arcTop" startOffset="50%" text-anchor="middle">NASA</textPath>
+  </text>
+  <text font-family="Orbitron, Arial, sans-serif" font-size="10" font-weight="700" fill="#e9d5ff" letter-spacing="1.5">
+    <textPath href="#arcBottom" startOffset="50%" text-anchor="middle" dominant-baseline="hanging">SPACE APPS</textPath>
+  </text>
+</svg>

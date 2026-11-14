@@ -1,0 +1,200 @@
+/* ============================================================
+   HOME · terminal retro CRT (verde fósforo + ámbar)
+   ============================================================ */
+.home {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(24px, 5vh, 48px);
+  padding: calc(var(--header-h) + 16px) var(--gutter) clamp(28px, 7vh, 72px);
+}
+
+/* Monitor */
+.crt {
+  position: relative;
+  width: min(880px, 100%);
+  min-height: clamp(280px, 48vh, 460px);
+  margin-top: auto;
+  padding: clamp(22px, 4vw, 44px);
+  border-radius: 26px / 22px;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(57, 255, 138, 0.09), transparent 70%),
+    radial-gradient(ellipse at 50% 50%, #04140b 0%, var(--crt-bg) 75%, #000 100%);
+  border: 2px solid #1d1a33;
+  box-shadow:
+    0 0 0 10px #0f0c22,
+    0 0 0 11px rgba(168, 85, 247, 0.35),
+    0 0 40px rgba(168, 85, 247, 0.25),
+    inset 0 0 80px rgba(0, 0, 0, 0.9),
+    inset 0 0 18px rgba(57, 255, 138, 0.25),
+    var(--shadow);
+  overflow: hidden;
+  isolation: isolate;
+  animation: crt-on 0.9s var(--ease-out) both;
+}
+
+/* scanlines */
+.crt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 0, 0, 0.025) 0 1px, rgba(0, 255, 0, 0.02) 1px 2px, rgba(0, 0, 255, 0.025) 2px 3px);
+  mix-blend-mode: multiply;
+}
+
+/* viñeta, reflejo y barrido de refresco */
+.crt::after {
+  content: '';
+  position: absolute;
+  inset: -20% 0 auto 0;
+  height: 30%;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(57, 255, 138, 0.06) 50%, transparent);
+  animation: crt-sweep 7s linear infinite;
+}
+
+@keyframes crt-sweep {
+  to {
+    transform: translateY(520%);
+  }
+}
+
+@keyframes crt-on {
+  0% {
+    transform: scaleY(0.01) scaleX(0.6);
+    filter: brightness(4);
+    opacity: 0;
+  }
+  45% {
+    transform: scaleY(0.02) scaleX(1);
+    filter: brightness(3);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    filter: none;
+  }
+}
+
+.terminal {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: clamp(21px, 2.6vw, 30px);
+  line-height: 1.25;
+  color: var(--retro-green);
+  text-shadow: var(--glow-green);
+  animation: crt-flicker 4s steps(1) infinite;
+}
+
+.terminal::before {
+  content: 'GALAXYCORE OS v1.0 · ENLACE ORBITAL ESTABLE';
+  display: block;
+  margin-bottom: 18px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(255, 181, 71, 0.45);
+  color: var(--retro-amber);
+  font-size: 0.72em;
+  letter-spacing: 0.08em;
+  text-shadow:
+    0 0 4px rgba(255, 181, 71, 0.9),
+    0 0 14px rgba(255, 181, 71, 0.4);
+}
+
+.terminal__line {
+  margin: 0 0 0.45em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.terminal__line:last-child {
+  color: var(--retro-amber);
+  text-shadow:
+    0 0 4px rgba(255, 181, 71, 0.9),
+    0 0 14px rgba(255, 181, 71, 0.4);
+}
+
+.terminal__cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--retro-green);
+  text-shadow: var(--glow-green);
+  animation: cursor-blink 1s steps(1) infinite;
+}
+
+@keyframes cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes crt-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  47% {
+    opacity: 0.96;
+  }
+  48% {
+    opacity: 1;
+  }
+  73% {
+    opacity: 0.93;
+  }
+  74% {
+    opacity: 1;
+  }
+}
+
+/* Acciones de la home: INICIAR MISIÓN grande abajo centrado */
+.home__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: auto;
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s var(--ease-out);
+}
+
+.home__actions--show {
+  opacity: 1;
+  transform: none;
+}
+
+.home__actions .btn--primary {
+  min-width: min(420px, 86vw);
+  padding: 22px 44px;
+  font-size: clamp(18px, 2.6vw, 26px);
+  letter-spacing: 0.22em;
+  animation: btn-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes btn-breathe {
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(233, 213, 255, 0.6) inset,
+      0 0 12px rgba(168, 85, 247, 0.9),
+      0 0 46px rgba(168, 85, 247, 0.6),
+      0 0 90px rgba(168, 85, 247, 0.3);
+  }
+}
+
+/* Pantallas bajas: el botón INICIAR MISIÓN debe quedar visible sin scroll */
+@media (max-height: 820px) {
+  .home { gap: 16px; padding-bottom: 20px; }
+  .crt { min-height: 0; padding: 18px 26px; }
+  .terminal { font-size: clamp(18px, 3.2vh, 24px); line-height: 1.15; }
+  .terminal::before { margin-bottom: 10px; }
+}

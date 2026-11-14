@@ -1,0 +1,140 @@
+/* NovaCore – Misión Robots · hoja de estilos principal */
+@import './tokens.css';
+@import './base.css';
+@import './retro.css';
+@import './components.css';
+@import './screens.css';
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 900px) {
+  .podium__discover {
+    letter-spacing: 0.18em;
+    padding: 5px 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header__logo img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .header__menu-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  .crt {
+    border-radius: 18px;
+    min-height: 0;
+  }
+
+  .terminal {
+    font-size: 20px;
+  }
+
+  .home__actions .btn--primary {
+    padding: 18px 28px;
+    letter-spacing: 0.16em;
+  }
+
+  .podium__name {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .podium__discover {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 4px 6px;
+  }
+
+  .hud-hint {
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .modal__actions {
+    justify-content: stretch;
+  }
+
+  .modal__actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .map-screen {
+    justify-content: flex-start;
+  }
+
+  .stone {
+    width: 120px;
+    font-size: 10px;
+  }
+
+  .certificate__footer {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .home {
+    gap: 14px;
+  }
+
+  .crt {
+    min-height: 0;
+    padding: 16px 22px;
+  }
+
+  .terminal {
+    font-size: 18px;
+  }
+
+  .home__actions .btn--primary {
+    padding: 12px 28px;
+  }
+}
+
+/* ============================================================
+   Movimiento reducido
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .terminal__cursor {
+    animation: none !important;
+  }
+
+  .crt::after,
+  .info-card::after,
+  .bg-stars::after,
+  .menu__bar > span::after {
+    display: none;
+  }
+
+  .map__route {
+    animation: none !important;
+  }
+
+  /* el parpadeo de celebración se reduce a un único resaltado estático */
+  .podium--celebrate {
+    animation: none !important;
+    box-shadow: inset 0 0 0 2px #fff, inset 0 0 80px rgba(255, 255, 255, 0.35);
+  }
+
+  .screen--enter,
+  .screen--leave {
+    transform: none;
+    filter: none;
+  }
+}
