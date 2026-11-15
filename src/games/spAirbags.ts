@@ -1,14 +1,7 @@
-/**
- * SPIRIT · MISIÓN 1 · Aterrizaje con bolsas de aire.
- *
- * Spirit llegó a Marte (cráter Gusev, enero de 2004) frenando con un paracaídas, envuelto en
- * bolsas de aire y con cohetes de frenado; luego cayó, rebotó muchas veces y rodó hasta parar.
- * Mecánica: un solo botón cuya acción cambia (paracaídas → bolsas → cohetes); cada paso tiene
- * una zona verde en el altímetro. Si se pasa la zona, se explica y se repite ese paso.
- */
 import type { GameContext } from './index';
 import { brief, dots, injectKit, MER_SVG, say, sfx, stopSpeak, theme } from './lkKit';
 import { rng } from '../ui/moonTexture';
+import { tr } from '../i18n';
 
 const W = 600;
 const H = 720;
@@ -17,8 +10,8 @@ const GROUND = 640;
 interface Step {
   id: 'chute' | 'bags' | 'rockets';
   label: string;
-  top: number; // km
-  low: number; // km
+  top: number;
+  low: number;
   ok: string;
   early: string;
   late: string;
@@ -26,30 +19,30 @@ interface Step {
 const STEPS: Step[] = [
   {
     id: 'chute',
-    label: '🪂 Abrir paracaídas',
+    label: tr('🪂 Open parachute', '🪂 Abrir paracaídas'),
     top: 12,
     low: 6,
-    ok: '¡Paracaídas abierto! El escudo de calor se suelta y la nave frena.',
-    early: 'Todavía no: vas demasiado rápido. Espera a la zona verde.',
-    late: 'Se pasó el momento del paracaídas. ¡Intentémoslo otra vez!',
+    ok: tr('Parachute open! The heat shield drops off and the spacecraft slows down.', '¡Paracaídas abierto! El escudo de calor se suelta y la nave frena.'),
+    early: tr('Not yet: you are going too fast. Wait for the green zone.', 'Todavía no: vas demasiado rápido. Espera a la zona verde.'),
+    late: tr('You missed the parachute moment. Let\'s try again!', 'Se pasó el momento del paracaídas. ¡Intentémoslo otra vez!'),
   },
   {
     id: 'bags',
-    label: '🎈 Inflar bolsas de aire',
+    label: tr('🎈 Inflate airbags', '🎈 Inflar bolsas de aire'),
     top: 1.6,
     low: 0.4,
-    ok: '¡Bolsas infladas! Ahora Spirit está dentro de una pelota gigante.',
-    early: 'Aún es pronto para las bolsas. Espera a la zona verde.',
-    late: 'Faltaron las bolsas de aire. ¡Otra vez, un poco antes!',
+    ok: tr('Airbags inflated! Now Spirit is inside a giant ball.', '¡Bolsas infladas! Ahora Spirit está dentro de una pelota gigante.'),
+    early: tr('It is too early for the airbags. Wait for the green zone.', 'Aún es pronto para las bolsas. Espera a la zona verde.'),
+    late: tr('The airbags were missing. Again, a little earlier!', 'Faltaron las bolsas de aire. ¡Otra vez, un poco antes!'),
   },
   {
     id: 'rockets',
-    label: '🚀 Encender cohetes',
+    label: tr('🚀 Fire rockets', '🚀 Encender cohetes'),
     top: 0.15,
     low: 0.03,
-    ok: '¡Cohetes encendidos! La nave casi se detiene… ¡cortamos el cable!',
-    early: 'Muy alto para los cohetes. Espera a la zona verde, cerca del suelo.',
-    late: 'Los cohetes debían encenderse antes de tocar el suelo. ¡Reintenta!',
+    ok: tr('Rockets fired! The spacecraft almost stops… we cut the cable!', '¡Cohetes encendidos! La nave casi se detiene… ¡cortamos el cable!'),
+    early: tr('Too high for the rockets. Wait for the green zone, near the ground.', 'Muy alto para los cohetes. Espera a la zona verde, cerca del suelo.'),
+    late: tr('The rockets had to fire before touching the ground. Try again!', 'Los cohetes debían encenderse antes de tocar el suelo. ¡Reintenta!'),
   },
 ];
 
@@ -91,13 +84,13 @@ export default function spAirbags({ root, win }: GameContext): () => void {
     root.innerHTML = `
       <div class="lk"${theme('#3b82f6', '#93c5fd')}><div class="lk__wrap">
         <div class="lk-top">
-          <p class="lk-task"><i>1</i>Aterriza a Spirit en el cráter Gusev de Marte.</p>
-          <span data-dots>${dots(3, 0, 'PASO')}</span>
+          <p class="lk-task"><i>1</i>${tr('Land Spirit in Gusev crater on Mars.', 'Aterriza a Spirit en el cráter Gusev de Marte.')}</p>
+          <span data-dots>${dots(3, 0, tr('STEP', 'PASO'))}</span>
         </div>
         <div class="spa">
-          <canvas width="${W}" height="${H}" aria-label="Descenso de Spirit en Marte"></canvas>
+          <canvas width="${W}" height="${H}" aria-label="${tr('Spirit descending on Mars', 'Descenso de Spirit en Marte')}"></canvas>
           <div class="spa__side">
-            <div class="spa__alt"><small>ALTITUD</small><b data-alt>20,0 km</b></div>
+            <div class="spa__alt"><small>${tr('ALTITUDE', 'ALTITUD')}</small><b data-alt>${tr('20.0', '20,0')} km</b></div>
             <ol class="spa__steps">${STEPS.map((s, i) => `<li data-li="${i}">${i + 1}. ${s.label.slice(3)}</li>`).join('')}</ol>
             <button type="button" class="lk-btn lk-btn--go spa__go" data-go>${STEPS[0].label}</button>
             <p class="lk-say" data-say></p>
@@ -114,15 +107,14 @@ export default function spAirbags({ root, win }: GameContext): () => void {
     const rocks = Array.from({ length: 26 }, () => ({ x: rand() * W, y: GROUND + 6 + rand() * 70, r: 2 + rand() * 9 }));
     const streaks = Array.from({ length: 40 }, () => ({ x: rand() * W, y: rand() * H, l: 20 + rand() * 60 }));
 
-    // estado
-    let alt = 20; // km
+    let alt = 20;
     let step = 0;
     let chute = false;
     let bags = false;
-    let rockets = 0; // tiempo con cohetes encendidos
+    let rockets = 0;
     let paused = false;
     let phase: 'fall' | 'drop' | 'bounce' | 'open' | 'done' = 'fall';
-    let shieldY = -1; // escudo de calor cayendo
+    let shieldY = -1;
     let backshell = { x: 300, y: 0, vx: 0, vy: 0 };
     const ball = { x: 300, y: 0, vx: 0, vy: 0, rot: 0 };
     let bounces = 0;
@@ -130,26 +122,26 @@ export default function spAirbags({ root, win }: GameContext): () => void {
     let t = 0;
     let shake = 0;
     const dust: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
-    const scores: number[] = []; // precisión de cada paso (0–1)
+    const scores: number[] = [];
 
     const capY = () => (alt > 0.25 ? 250 : 250 + (1 - alt / 0.25) * 330);
     const groundY = () => GROUND + Math.max(0, alt - 0.25) * 380;
-    const fmtAlt = (a: number) => (a >= 1 ? `${a.toFixed(1).replace('.', ',')} km` : `${Math.max(0, Math.round(a * 1000))} m`);
+    const fmtAlt = (a: number) => (a >= 1 ? `${a.toFixed(1).replace('.', tr('.', ','))} km` : `${Math.max(0, Math.round(a * 1000))} m`);
 
     const updateUi = () => {
       root.querySelectorAll<HTMLElement>('[data-li]').forEach((li, i) => (li.className = i < step ? 'done' : i === step && phase === 'fall' ? 'now' : ''));
-      root.querySelector('[data-dots]')!.innerHTML = dots(3, step, 'PASO');
+      root.querySelector('[data-dots]')!.innerHTML = dots(3, step, tr('STEP', 'PASO'));
       if (step < STEPS.length) goBtn.textContent = STEPS[step].label;
     };
     updateUi();
-    say(sayEl, 'Spirit entra a la atmósfera de Marte a gran velocidad. Pulsa el botón cuando el altímetro esté en la zona verde.');
+    say(sayEl, tr('Spirit enters the Martian atmosphere at high speed. Press the button when the altimeter is in the green zone.', 'Spirit entra a la atmósfera de Marte a gran velocidad. Pulsa el botón cuando el altímetro esté en la zona verde.'));
 
     const retryStep = () => {
       const s = STEPS[step];
       alt = s.top + (s.top - s.low) * 0.35;
       paused = false;
       goBtn.disabled = false;
-      say(sayEl, 'Volvemos un poquito atrás… ¡atento a la zona verde!');
+      say(sayEl, tr('Going back a little… watch for the green zone!', 'Volvemos un poquito atrás… ¡atento a la zona verde!'));
     };
 
     const act = () => {
@@ -161,9 +153,8 @@ export default function spAirbags({ root, win }: GameContext): () => void {
         return;
       }
       sfx.ok();
-      // precisión: mejor cuanto más cerca del centro de la zona verde
       const mid = (s.top + s.low) / 2;
-      const d = Math.abs(alt - mid) / ((s.top - s.low) / 2); // 0 = centro, 1 = borde
+      const d = Math.abs(alt - mid) / ((s.top - s.low) / 2);
       scores.push(d < 0.5 ? 1 : Math.max(0, 1 - (d - 0.5) * 2));
       if (s.id === 'chute') {
         chute = true;
@@ -198,7 +189,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
         if (paused) return;
         alt -= rate() * dt;
         if (rockets > 0) rockets += dt;
-        // ¿se pasó la zona del paso actual?
         const s = STEPS[step];
         if (s && alt < s.low) {
           paused = true;
@@ -209,7 +199,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
           return;
         }
         if (rockets > 0.8 || (rockets > 0 && alt <= 0.012)) {
-          // cortar el cable: la pelota cae libre
           phase = 'drop';
           backshell = { x: 300, y: capY() - 70, vx: -40, vy: -60 };
           ball.x = 300;
@@ -238,13 +227,13 @@ export default function spAirbags({ root, win }: GameContext): () => void {
             shake = Math.min(14, Math.abs(ball.vy) / 18);
             for (let i = 0; i < 26; i++)
               dust.push({ x: ball.x + (Math.random() - 0.5) * 60, y: GROUND - 6, vx: (Math.random() - 0.5) * 160, vy: -Math.random() * 90, life: 0.8 + Math.random() * 0.6 });
-            say(sayEl, `¡Rebote ${bounces}! Las bolsas de aire protegen a Spirit.`, 'ok');
+            say(sayEl, tr(`Bounce ${bounces}! The airbags protect Spirit.`, `¡Rebote ${bounces}! Las bolsas de aire protegen a Spirit.`), 'ok');
           } else {
             ball.vy = 0;
             ball.vx *= 1 - 2.2 * dt;
             if (Math.abs(ball.vx) < 4) {
               phase = 'open';
-              say(sayEl, 'Se detuvo. Se desinflan las bolsas y se abren los pétalos…', 'ok');
+              say(sayEl, tr('It stopped. The airbags deflate and the petals open…', 'Se detuvo. Se desinflan las bolsas y se abren los pétalos…'), 'ok');
             }
           }
         }
@@ -263,7 +252,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
     const tonePop = () => sfx.beep();
 
     const drawCapsule = (x: number, y: number) => {
-      // paracaídas
       if (chute) {
         const cy = y - 190;
         g.strokeStyle = 'rgba(255,255,255,.6)';
@@ -287,7 +275,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
           g.fill();
         }
       }
-      // concha trasera
       g.fillStyle = '#e5e7eb';
       g.strokeStyle = '#6b7280';
       g.lineWidth = 2;
@@ -316,7 +303,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
         }
       }
       if (!chute) {
-        // escudo de calor (con brillo al entrar)
         g.fillStyle = '#7c2d12';
         g.beginPath();
         g.ellipse(x, y - 8, 50, 12, 0, 0, Math.PI);
@@ -332,7 +318,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
           g.fill();
         }
       } else {
-        // cable y módulo (con o sin bolsas)
         g.strokeStyle = '#d1d5db';
         g.lineWidth = 2;
         g.beginPath();
@@ -380,7 +365,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
     };
 
     const drawRover = (x: number, y: number) => {
-      // pétalos abiertos + rover simple
       g.fillStyle = '#9ca3af';
       g.beginPath();
       g.moveTo(x - 90 * openK, y + 4);
@@ -422,7 +406,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
       sky.addColorStop(1, '#e9c79a');
       g.fillStyle = sky;
       g.fillRect(0, 0, W, H);
-      // líneas de velocidad mientras cae rápido
       if (phase === 'fall' && !paused) {
         g.strokeStyle = 'rgba(255,255,255,.25)';
         g.lineWidth = 2;
@@ -436,7 +419,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
           g.stroke();
         }
       }
-      // suelo
       const gy = phase === 'fall' ? groundY() : GROUND;
       if (gy < H) {
         g.fillStyle = '#b4693f';
@@ -456,7 +438,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
           g.fill();
         }
       }
-      // escudo de calor cayendo
       if (shieldY > 0 && shieldY < H) {
         shieldY += 6;
         g.fillStyle = '#7c2d12';
@@ -466,7 +447,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
       }
       if (phase === 'fall') drawCapsule(300, capY());
       else {
-        // concha y paracaídas se alejan
         if (backshell.y > -200) {
           g.save();
           g.translate(backshell.x - 300, backshell.y - (capY() - 70));
@@ -476,7 +456,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
         if (phase === 'open' || phase === 'done') drawRover(ball.x, GROUND - 6);
         else drawBall(ball.x, ball.y, ball.rot, 1);
       }
-      // polvo de los rebotes
       for (const d of dust) {
         d.life -= 0.016;
         d.x += d.vx * 0.016;
@@ -489,7 +468,6 @@ export default function spAirbags({ root, win }: GameContext): () => void {
         g.fill();
       }
       g.restore();
-      // altímetro con zona verde
       const ax = 22;
       const top = 40;
       const bot = H - 40;
@@ -530,34 +508,36 @@ export default function spAirbags({ root, win }: GameContext): () => void {
       const prec = scores.reduce((a, b) => a + b, 0) / Math.max(1, scores.length);
       const n = prec > 0.66 ? 3 : prec > 0.33 ? 2 : 1;
       const stars = '★'.repeat(n) + '☆'.repeat(3 - n);
-      const precText = n === 3 ? '¡Precisión de ingeniero de la NASA!' : n === 2 ? '¡Muy buen control!' : 'Lo lograste. Prueba otra vez para pulsar justo en el centro de la zona verde.';
+      const precText = n === 3 ? tr('NASA engineer precision!', '¡Precisión de ingeniero de la NASA!') : n === 2 ? tr('Very good control!', '¡Muy buen control!') : tr('You did it. Try again to press right in the middle of the green zone.', 'Lo lograste. Prueba otra vez para pulsar justo en el centro de la zona verde.');
       const side = root.querySelector('.spa__side')!;
       const box = document.createElement('div');
       box.className = 'lk-learn';
       box.innerHTML = `
-        <h4>¿QUÉ APRENDISTE?</h4>
+        <h4>${tr('WHAT DID YOU LEARN?', '¿QUÉ APRENDISTE?')}</h4>
         <p style="margin:0 0 8px;font-size:28px;letter-spacing:4px;color:#fde047">${stars}</p>
-        <p style="margin:0 0 12px">${precText} ¡Aterrizaje con ${bounces} rebotes! Marte tiene poco aire: el paracaídas solo no alcanza para frenar.
-        Por eso Spirit usó <b>paracaídas, cohetes y bolsas de aire</b>. Cada planeta necesita su propia forma de aterrizar.</p>
-        <button type="button" class="lk-btn lk-btn--go" data-end>¡Misión cumplida!</button>`;
+        <p style="margin:0 0 12px">${precText} ${tr(
+          `Landing with ${bounces} bounces! Mars has very little air: a parachute alone is not enough to slow down. That is why Spirit used a <b>parachute, rockets and airbags</b>. Each planet needs its own way of landing.`,
+          `¡Aterrizaje con ${bounces} rebotes! Marte tiene poco aire: el paracaídas solo no alcanza para frenar. Por eso Spirit usó <b>paracaídas, cohetes y bolsas de aire</b>. Cada planeta necesita su propia forma de aterrizar.`,
+        )}</p>
+        <button type="button" class="lk-btn lk-btn--go" data-end>${tr('Mission accomplished!', '¡Misión cumplida!')}</button>`;
       side.appendChild(box);
       box.querySelector('[data-end]')!.addEventListener('click', win);
     };
   };
 
   brief(root, {
-    kicker: 'SPIRIT · MISIÓN 1',
-    title: 'Aterrizaje con bolsas de aire',
-    text: 'En 2004, Spirit llegó a Marte envuelto en bolsas de aire, como una pelota gigante.',
-    goal: 'Pulsa el botón en la zona verde: paracaídas, bolsas de aire y cohetes.',
+    kicker: tr('SPIRIT · MISSION 1', 'SPIRIT · MISIÓN 1'),
+    title: tr('Airbag landing', 'Aterrizaje con bolsas de aire'),
+    text: tr('In 2004, Spirit arrived on Mars wrapped in airbags, like a giant ball.', 'En 2004, Spirit llegó a Marte envuelto en bolsas de aire, como una pelota gigante.'),
+    goal: tr('Press the button in the green zone: parachute, airbags and rockets.', 'Pulsa el botón en la zona verde: paracaídas, bolsas de aire y cohetes.'),
     art: MER_SVG,
     accent: '#3b82f6',
     soft: '#93c5fd',
     guess: {
-      q: '¿Cómo tocó el suelo Spirit al llegar a Marte?',
-      options: ['Rebotando dentro de bolsas de aire', 'Lo bajó un astronauta'],
+      q: tr('How did Spirit touch the ground when it reached Mars?', '¿Cómo tocó el suelo Spirit al llegar a Marte?'),
+      options: [tr('Bouncing inside airbags', 'Rebotando dentro de bolsas de aire'), tr('An astronaut lowered it', 'Lo bajó un astronauta')],
       correct: 0,
-      why: 'Cayó dentro de bolsas de aire y rebotó muchas veces antes de detenerse. ¡Nunca ha ido una persona a Marte!',
+      why: tr('It fell inside airbags and bounced many times before stopping. No person has ever gone to Mars!', 'Cayó dentro de bolsas de aire y rebotó muchas veces antes de detenerse. ¡Nunca ha ido una persona a Marte!'),
     },
     onStart: start,
   });

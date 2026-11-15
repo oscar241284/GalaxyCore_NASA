@@ -1,12 +1,6 @@
 import type { Body, RobotId } from '../types';
+import { tr as t } from '../i18n';
 
-/**
- * Arte de fondo de los mapas (markup interno de un <svg viewBox="0 0 1000 600">).
- * Solo terreno: la ruta y los niveles los dibuja el desarrollador encima.
- * Todos los ids van prefijados con el robot para evitar colisiones entre SVG inline.
- */
-
-/** PRNG determinista (mulberry32). */
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -101,7 +95,6 @@ function finish(p: string): string {
 <rect width="1000" height="600" fill="url(#${p}-vignette)" pointer-events="none"/>`;
 }
 
-/** Cráter con luz desde arriba-izquierda: sombra interior, borde iluminado. */
 function crater(p: string, pal: Palette, x: number, y: number, r: number, squash = 0.86): string {
   const ry = r * squash;
   return `<g>
@@ -112,7 +105,6 @@ function crater(p: string, pal: Palette, x: number, y: number, r: number, squash
 </g>`;
 }
 
-/** Campo de cráteres pequeños, evitando una lista de zonas. */
 function craterField(
   p: string,
   pal: Palette,
@@ -137,7 +129,6 @@ function craterField(
   return out;
 }
 
-/** Rocas pequeñas sueltas. */
 function pebbles(seed: number, count: number, color: string, shade: string): string {
   const r = rng(seed);
   let out = '';
@@ -150,7 +141,6 @@ function pebbles(seed: number, count: number, color: string, shade: string): str
   return out;
 }
 
-/** Montaña low-poly: cara iluminada (izq), cara en sombra (der) y arista central. */
 function mountain(pal: Palette, x: number, y: number, w: number, h: number, skew = 0): string {
   const px = x + skew;
   const top = y - h;
@@ -172,18 +162,13 @@ function label(text: string, x: number, y: number, pal: Palette, size = 14, anch
   return `<text x="${x}" y="${y}" fill="${pal.label}" font-family="Orbitron, 'Space Grotesk', sans-serif" font-size="${size}" letter-spacing="2" text-anchor="${anchor}"${tr} style="text-transform:uppercase;paint-order:stroke" stroke="rgba(0,0,0,0.35)" stroke-width="3">${text}</text>`;
 }
 
-/* ------------------------------------------------------------------ */
-/* LRV · Apollo 15 · Hadley-Apennine                                   */
-/* ------------------------------------------------------------------ */
 function lrvMap(): string {
   const p = 'lrv';
   const pal = MOON;
   const rille =
     'M210,-20 C250,60 300,100 285,160 C270,220 310,250 318,300 C326,350 300,390 345,420 C330,450 270,470 220,520 C180,560 140,585 95,620';
   let s = defs(p, pal, 'moon') + ground(p);
-  // Mar Imbrium/Palus Putredinis más oscuro al oeste
   s += `<ellipse cx="120" cy="300" rx="320" ry="380" fill="url(#${p}-mare)"/>`;
-  // Mons Hadley (noreste)
   s += `<g>
     <polygon points="660,0 1000,0 1000,250 900,230 800,180 720,110" fill="${pal.base2}" opacity="0.55"/>
     ${mountain(pal, 860, 215, 330, 210, 20)}
@@ -191,7 +176,6 @@ function lrvMap(): string {
     ${mountain(pal, 960, 150, 180, 150, 10)}
     ${mountain(pal, 700, 95, 120, 70)}
   </g>`;
-  // Hadley Delta (sur)
   s += `<g>
     <polygon points="300,600 360,540 470,510 600,500 760,505 900,530 1000,520 1000,600" fill="${pal.base2}" opacity="0.5"/>
     ${mountain(pal, 560, 610, 420, 120, 30)}
@@ -199,7 +183,6 @@ function lrvMap(): string {
     ${mountain(pal, 400, 620, 260, 80, 10)}
     ${mountain(pal, 960, 620, 200, 120)}
   </g>`;
-  // Hadley Rille: canal sinuoso
   s += `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="${rille}" stroke="${pal.rim}" stroke-width="50" opacity="0.35"/>
     <path d="${rille}" stroke="${pal.shadow}" stroke-width="38"/>
@@ -211,11 +194,10 @@ function lrvMap(): string {
     [300, 280, 40],
     [860, 120, 140],
   ]);
-  // Cráteres con nombre
-  s += crater(p, pal, 440, 512, 34); // St. George
-  s += crater(p, pal, 705, 478, 13); // Spur
-  s += crater(p, pal, 610, 400, 18); // Dune
-  s += crater(p, pal, 520, 120, 26); // North Complex
+  s += crater(p, pal, 440, 512, 34);
+  s += crater(p, pal, 705, 478, 13);
+  s += crater(p, pal, 610, 400, 18);
+  s += crater(p, pal, 520, 120, 26);
   s += crater(p, pal, 570, 140, 16);
   s += pebbles(151, 120, pal.rim, pal.shadow);
   s += finish(p);
@@ -232,85 +214,11 @@ function lrvMap(): string {
   return s;
 }
 
-/* ------------------------------------------------------------------ */
-/* Lunojod 2 · cráter Le Monnier                                       */
-/* ------------------------------------------------------------------ */
-function lunokhodMap(): string {
-  const p = 'lunokhod2';
-  const pal = MOON;
-  const cx = 450;
-  const cy = 310;
-  const rx = 430;
-  const ry = 255;
-  const a0 = (-145 * Math.PI) / 180;
-  const a1 = (145 * Math.PI) / 180;
-  const x0 = cx + rx * Math.cos(a0);
-  const y0 = cy + ry * Math.sin(a0);
-  const x1 = cx + rx * Math.cos(a1);
-  const y1 = cy + ry * Math.sin(a1);
-  const rimPath = `M${f(x0)},${f(y0)} A${rx},${ry} 0 1 1 ${f(x1)},${f(y1)}`;
-  let s = defs(p, pal, 'moon') + ground(p);
-  // Fuera del cráter al este: tierras altas (Montes Taurus) más claras
-  s += `<path d="M880,0 L1000,0 L1000,600 L860,600 C930,450 940,180 880,0Z" fill="${pal.base0}" opacity="0.5"/>`;
-  // Mare Serenitatis al oeste y suelo inundado del cráter
-  s += `<ellipse cx="-40" cy="310" rx="330" ry="420" fill="url(#${p}-mare)"/>`;
-  s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx - 30}" ry="${ry - 25}" fill="url(#${p}-mare)" opacity="0.9"/>`;
-  // Borde del cráter (abierto hacia el oeste)
-  s += `<g fill="none" stroke-linecap="round">
-    <path d="${rimPath}" stroke="${pal.shadow}" stroke-width="46" opacity="0.55" transform="translate(-10 6)"/>
-    <path d="${rimPath}" stroke="url(#${p}-ridge)" stroke-width="34"/>
-    <path d="${rimPath}" stroke="${pal.rim}" stroke-width="6" opacity="0.6" transform="translate(-6 -4)"/>
-  </g>`;
-  // Colinas a lo largo del borde
-  const r = rng(77);
-  for (let i = 0; i < 26; i++) {
-    const t = a0 + (a1 - a0) * (i / 25);
-    const hx = cx + (rx + 6) * Math.cos(t);
-    const hy = cy + (ry + 6) * Math.sin(t);
-    s += mountain(pal, hx, hy + 10, 34 + r() * 30, 18 + r() * 26, (r() - 0.5) * 10);
-  }
-  // Colinas del sur (estribaciones de Taurus) hacia donde fue el rover
-  s += mountain(pal, 470, 548, 90, 48, 6);
-  s += mountain(pal, 540, 540, 70, 36, -4);
-  s += mountain(pal, 600, 556, 80, 40);
-  // Montes Taurus al este
-  s += mountain(pal, 950, 200, 120, 110, 10);
-  s += mountain(pal, 940, 420, 140, 120, -10);
-  s += mountain(pal, 985, 320, 90, 80);
-  // Fossa Recta: falla tectónica casi recta
-  const fault = 'M772,470 L790,380 L806,300 L818,230 L832,150 L848,70';
-  s += `<g fill="none" stroke-linejoin="round" stroke-linecap="round">
-    <path d="${fault}" stroke="${pal.rim}" stroke-width="16" opacity="0.35" transform="translate(-3 -2)"/>
-    <path d="${fault}" stroke="${pal.shadow}" stroke-width="9"/>
-    <path d="${fault}" stroke="#202125" stroke-width="3"/>
-  </g>`;
-  s += craterField(p, pal, 22, 40, 3, 14, [
-    [300, 330, 30],
-    [810, 260, 40],
-  ]);
-  s += crater(p, pal, 655, 230, 22);
-  s += crater(p, pal, 380, 220, 12);
-  s += crater(p, pal, 590, 445, 14);
-  s += pebbles(222, 100, pal.rim, pal.shadow);
-  s += finish(p);
-  s += label('Le Monnier', 470, 150, pal, 20);
-  s += label('Mare Serenitatis', 30, 50, pal, 14, 'start');
-  s += label('Montes Taurus', 990, 560, pal, 13, 'end');
-  s += label('Fossa Recta', 860, 300, pal, 12, 'middle', -78);
-  s += label('Luna 21', 285, 365, pal, 10, 'middle');
-  return s;
-}
-
-/* ------------------------------------------------------------------ */
-/* Spirit · cráter Gusev · Columbia Hills                              */
-/* ------------------------------------------------------------------ */
 function spiritMap(): string {
   const p = 'spirit';
   const pal = MARS;
   let s = defs(p, pal, 'mars') + ground(p);
-  // Borde lejano de Gusev (esquina superior izquierda, difuso)
   s += `<path d="M-20,90 C120,40 250,10 380,-20" fill="none" stroke="${pal.rim}" stroke-width="40" opacity="0.18" filter="url(#${p}-soft)"/>`;
-  // Columbia Hills: curvas de nivel concéntricas
   const hill = (hx: number, hy: number, w: number, h: number, levels: number, seed: number) => {
     const r = rng(seed);
     let g = '';
@@ -330,26 +238,22 @@ function spiritMap(): string {
     return g;
   };
   s += `<ellipse cx="740" cy="360" rx="260" ry="190" fill="${pal.shadow}" opacity="0.25" filter="url(#${p}-soft)"/>`;
-  s += hill(740, 290, 120, 85, 6, 3); // Husband Hill
-  s += hill(860, 420, 90, 70, 5, 9); // McCool Hill
-  s += hill(635, 320, 55, 40, 3, 13); // West Spur
-  s += hill(900, 250, 70, 60, 4, 17); // Haskin Ridge
-  s += hill(800, 485, 55, 28, 3, 21); // Low Ridge
-  // Home Plate: meseta clara y estratificada
+  s += hill(740, 290, 120, 85, 6, 3);
+  s += hill(860, 420, 90, 70, 5, 9);
+  s += hill(635, 320, 55, 40, 3, 13);
+  s += hill(900, 250, 70, 60, 4, 17);
+  s += hill(800, 485, 55, 28, 3, 21);
   s += `<ellipse cx="727" cy="455" rx="38" ry="26" fill="${pal.craterIn}" opacity="0.8"/>
   <ellipse cx="727" cy="455" rx="30" ry="19" fill="none" stroke="${pal.rim}" stroke-width="2" opacity="0.6"/>
   <ellipse cx="727" cy="455" rx="20" ry="12" fill="none" stroke="${pal.rim}" stroke-width="1.5" opacity="0.5"/>`;
-  // Troy: arena blanda
   s += `<ellipse cx="688" cy="468" rx="14" ry="8" fill="#f3d2a8" opacity="0.55"/>`;
-  // Cráteres de la llanura
-  s += crater(p, pal, 225, 125, 42); // Bonneville
-  s += crater(p, pal, 360, 180, 14); // Missoula
-  s += crater(p, pal, 470, 330, 12); // Lahontan
+  s += crater(p, pal, 225, 125, 42);
+  s += crater(p, pal, 360, 180, 14);
+  s += crater(p, pal, 470, 330, 12);
   s += craterField(p, pal, 33, 42, 3, 12, [
     [740, 360, 230],
     [225, 125, 50],
   ]);
-  // Remolinos de polvo (huellas oscuras)
   s += `<g fill="none" stroke="${pal.shadow}" stroke-opacity="0.18" stroke-width="5" stroke-linecap="round">
     <path d="M60,420 C200,380 330,470 470,430"/>
     <path d="M120,540 C260,500 380,560 540,520"/>
@@ -357,7 +261,7 @@ function spiritMap(): string {
   </g>`;
   s += pebbles(333, 160, pal.rim, pal.shadow);
   s += finish(p);
-  s += label('Cráter Gusev', 30, 40, pal, 16, 'start');
+  s += label(t('Gusev Crater', 'Cráter Gusev'), 30, 40, pal, 16, 'start');
   s += label('Bonneville', 225, 70, pal, 11);
   s += label('Columbia Hills', 760, 175, pal, 17);
   s += label('Husband Hill', 760, 240, pal, 10, 'start');
@@ -369,14 +273,10 @@ function spiritMap(): string {
   return s;
 }
 
-/* ------------------------------------------------------------------ */
-/* Opportunity · Meridiani Planum · Endeavour                          */
-/* ------------------------------------------------------------------ */
 function opportunityMap(): string {
   const p = 'opportunity';
   const pal = MARS;
   let s = defs(p, pal, 'mars') + ground(p);
-  // Dunas onduladas (ripples) de la llanura
   const r = rng(404);
   let ripples = '';
   for (let i = 0; i < 70; i++) {
@@ -386,13 +286,11 @@ function opportunityMap(): string {
     ripples += `<path d="M${f(x)},${f(y)} q${f(len / 2)},${f(-6 - r() * 4)} ${f(len)},0" />`;
   }
   s += `<g fill="none" stroke="${pal.shadow}" stroke-opacity="0.22" stroke-width="2.2">${ripples}</g>`;
-  // Endeavour: cráter gigante, solo su borde oeste
   const ecx = 1060;
   const ecy = 430;
   const er = 380;
   s += `<circle cx="${ecx}" cy="${ecy}" r="${er - 10}" fill="${pal.shadow}" opacity="0.35"/>`;
   s += `<circle cx="${ecx}" cy="${ecy}" r="${er - 60}" fill="${pal.shadow}" opacity="0.25" filter="url(#${p}-soft)"/>`;
-  // Segmentos del borde (colinas aisladas: Cabo York, Solander, Cabo Tribulation...)
   const seg = (deg0: number, deg1: number, w: number) => {
     const t0 = (deg0 * Math.PI) / 180;
     const t1 = (deg1 * Math.PI) / 180;
@@ -415,12 +313,11 @@ function opportunityMap(): string {
     ${seg(155, 140, 22)}
     ${seg(132, 122, 16)}
   </g>`;
-  // Cráteres con nombre
-  s += crater(p, pal, 152, 166, 22); // Eagle
-  s += crater(p, pal, 272, 195, 36); // Endurance
-  s += crater(p, pal, 306, 375, 40); // Victoria
-  s += crater(p, pal, 265, 272, 8); // Erebus (pequeño)
-  s += crater(p, pal, 470, 347, 11); // Santa María
+  s += crater(p, pal, 152, 166, 22);
+  s += crater(p, pal, 272, 195, 36);
+  s += crater(p, pal, 306, 375, 40);
+  s += crater(p, pal, 265, 272, 8);
+  s += crater(p, pal, 470, 347, 11);
   s += craterField(p, pal, 44, 34, 2.5, 9, [
     [152, 166, 30],
     [272, 195, 45],
@@ -433,7 +330,7 @@ function opportunityMap(): string {
   s += label('Eagle', 152, 130, pal, 10);
   s += label('Endurance', 315, 170, pal, 11, 'start');
   s += label('Victoria', 306, 437, pal, 11);
-  s += label('Cráter Endeavour', 900, 420, pal, 18);
+  s += label(t('Endeavour Crater', 'Cráter Endeavour'), 900, 420, pal, 18);
   s += label('Cabo York', 662, 352, pal, 10, 'end');
   s += label('Cabo Tribulation', 672, 470, pal, 10, 'end');
   s += label('Perseverance Valley', 728, 548, pal, 10, 'start');
@@ -444,8 +341,6 @@ export function mapBackgroundSVG(body: Body, robot: RobotId): string {
   switch (robot) {
     case 'lrv':
       return lrvMap();
-    case 'lunokhod2':
-      return lunokhodMap();
     case 'spirit':
       return spiritMap();
     case 'opportunity':

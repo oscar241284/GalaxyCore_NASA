@@ -1,6 +1,3 @@
-/* ============================================================
-   Base, layout de pantallas, fondo de estrellas, header y menú
-   ============================================================ */
 *,
 *::before,
 *::after {
@@ -46,7 +43,6 @@ button {
   display: none !important;
 }
 
-/* ---------- Layout ---------- */
 .app {
   position: relative;
   width: 100%;
@@ -95,7 +91,6 @@ button {
   display: block;
 }
 
-/* Fondo de estrellas CSS (3 capas de puntos + nebulosa) */
 .bg-stars {
   position: relative;
   min-height: 100%;
@@ -155,11 +150,10 @@ button {
   }
 }
 
-/* ---------- Header ---------- */
 .header {
   position: fixed;
   inset: 0 0 auto 0;
-  z-index: 110; /* por encima de los modales (100) para que el menú siempre funcione */
+  z-index: 110;
   height: var(--header-h);
   display: flex;
   align-items: center;
@@ -204,6 +198,85 @@ button {
   color: transparent;
   filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.55));
   user-select: none;
+}
+
+.header__sound {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(20, 14, 44, 0.6);
+  backdrop-filter: blur(8px);
+  color: var(--fg);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.header__sound svg {
+  width: 22px;
+  height: 22px;
+}
+
+.header__sound:hover,
+.header__sound:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--glow-soft);
+  color: var(--accent-3);
+}
+
+.header__sound.is-off {
+  color: var(--muted);
+}
+
+.header__lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 46px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(20, 14, 44, 0.6);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.header__lang:hover,
+.header__lang:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--glow-soft);
+}
+
+.header__lang-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 100%;
+  border-radius: 8px;
+  color: var(--muted);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.header__lang-opt.is-active {
+  background: var(--accent-deep);
+  color: var(--fg);
 }
 
 .header__menu-btn {
@@ -266,7 +339,6 @@ button {
   transform: translateY(-8px) rotate(-45deg);
 }
 
-/* ---------- Menú desplegable (cae desde la derecha) ---------- */
 .menu,
 .menu[hidden] {
   display: flex !important;
@@ -426,4 +498,10 @@ button {
 
 .menu__item[data-action='reset']::before {
   color: var(--bad);
+}
+
+@media (max-width: 420px) {
+  .header__team {
+    display: none;
+  }
 }

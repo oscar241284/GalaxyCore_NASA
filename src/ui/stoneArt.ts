@@ -1,6 +1,5 @@
 import type { Body } from '../types';
 
-/** PRNG determinista (mulberry32). */
 function rng(seed: number): () => number {
   let a = (seed * 2654435761) >>> 0;
   return () => {
@@ -19,10 +18,6 @@ const COLORS: Record<Body, { light: string; mid: string; dark: string; speck: st
   mars: { light: '#e09a68', mid: '#a9542e', dark: '#62260f', speck: '#3e170a' },
 };
 
-/**
- * SVG completo de una piedra irregular (viewBox 0 0 140 110), determinista por `seed`.
- * El centro (aprox. 24..116 x 30..80) queda limpio para superponer texto.
- */
 export function stoneSVG(body: Body, seed: number): string {
   const r = rng(seed + 1);
   const c = COLORS[body];
@@ -34,7 +29,6 @@ export function stoneSVG(body: Body, seed: number): string {
     const k = 0.76 + r() * 0.24;
     pts.push([70 + Math.cos(t) * 64 * k, 56 + Math.sin(t) * 48 * k]);
   }
-  // Contorno suavizado con curvas cuadráticas entre puntos medios
   let d = '';
   for (let i = 0; i < n; i++) {
     const a = pts[i];
@@ -49,7 +43,6 @@ export function stoneSVG(body: Body, seed: number): string {
   }
   d += 'Z';
 
-  // Facetas (low-poly) cerca del borde superior izquierdo
   let facets = '';
   for (let i = 0; i < 3; i++) {
     const a = pts[(7 + i) % n];
@@ -57,7 +50,6 @@ export function stoneSVG(body: Body, seed: number): string {
     facets += `<polygon points="${f(a[0])},${f(a[1])} ${f(b[0])},${f(b[1])} ${f(70 + (r() - 0.5) * 20)},${f(40 + r() * 10)}" fill="#fff" opacity="${f(0.05 + r() * 0.07)}"/>`;
   }
 
-  // Pequeños cráteres/poros evitando el centro
   let specks = '';
   for (let i = 0; i < 14; i++) {
     const t = r() * Math.PI * 2;

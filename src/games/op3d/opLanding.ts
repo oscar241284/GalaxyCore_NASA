@@ -1,13 +1,3 @@
-/**
- * OPPORTUNITY · MISIÓN 1 · ¡Hoyo en uno! (3D)
- *
- * El 25 de enero de 2004 Opportunity rebotó dentro de sus bolsas de aire y rodó hasta quedar
- * DENTRO del pequeño cráter Eagle (≈ 22 m): los científicos lo llamaron un «hoyo en uno».
- * Mecánica: guiar la cápsula bajo el paracaídas con los cohetes laterales (combustible
- * limitado, ráfagas de viento) usando el marcador de caída; a 12 m se suelta la pelota de
- * bolsas de aire, que rebota y rueda con física real sobre el terreno. 3 estrellas si termina
- * dentro del cráter. Se puede repetir para mejorar.
- */
 import {
   ConeGeometry,
   CylinderGeometry,
@@ -26,16 +16,17 @@ import type { GameContext } from '../index';
 import { brief, MER_SVG, sfx, stopSpeak } from '../lkKit';
 import { createControls, createRover, createWorld, type Rover } from './world';
 import { mountOp, noWebGL } from './opUi';
+import { tr } from '../../i18n';
 
 const EAGLE = { x: 0, z: 0, r: 11, depth: 3.2, rim: 0.7 };
-const G = 5.2; // gravedad del juego (Marte: 3,71 m/s²; un poco más para que no sea lento)
+const G = 5.2;
 const BALL_R = 2.4;
 
 export default function opLanding({ root, win }: GameContext): () => void {
   let cleanup: (() => void) | null = null;
 
   const start = () => {
-    const ui = mountOp(root, '🎯 Guía la cápsula y haz que la pelota de bolsas de aire termine <b>dentro del cráter Eagle</b>.');
+    const ui = mountOp(root, tr('🎯 Guide the capsule and make the airbag ball end up <b>inside Eagle crater</b>.', '🎯 Guía la cápsula y haz que la pelota de bolsas de aire termine <b>dentro del cráter Eagle</b>.'));
     const world = createWorld(ui.canvasHost, {
       size: 420,
       seg: 230,
@@ -49,7 +40,6 @@ export default function opLanding({ root, win }: GameContext): () => void {
     world.setTime(0.36);
     const controls = createControls(ui.joy);
 
-    // ---------- marcador del cráter (anillo + haz de luz) ----------
     const markGroup = new Group();
     const ring = new Mesh(new RingGeometry(EAGLE.r - 0.6, EAGLE.r + 0.4, 64), new MeshBasicMaterial({ color: '#fbbf24', transparent: true, opacity: 0.7, side: DoubleSide, depthWrite: false }));
     ring.rotation.x = -Math.PI / 2;
@@ -58,12 +48,10 @@ export default function opLanding({ root, win }: GameContext): () => void {
     beam.position.set(EAGLE.x, 70, EAGLE.z);
     markGroup.add(ring, beam);
     world.scene.add(markGroup);
-    // marcador de dónde caerá
     const aim = new Mesh(new RingGeometry(1.6, 2.4, 40), new MeshBasicMaterial({ color: '#67e8f9', transparent: true, opacity: 0.9, side: DoubleSide, depthWrite: false }));
     aim.rotation.x = -Math.PI / 2;
     world.scene.add(aim);
 
-    // ---------- cápsula: paracaídas + concha + pelota ----------
     const capsule = new Group();
     const chuteMat = new MeshStandardMaterial({ color: '#f8fafc', roughness: 0.8, side: DoubleSide });
     const chute = new Mesh(new ConeGeometry(7, 3.5, 24, 1, true), chuteMat);
@@ -111,7 +99,6 @@ export default function opLanding({ root, win }: GameContext): () => void {
     capsule.traverse((o) => ((o as Mesh).castShadow = true));
     world.scene.add(capsule);
 
-    // pétalos (al final)
     const petals = new Group();
     const petalMat = new MeshStandardMaterial({ color: '#cbd5e1', metalness: 0.5, roughness: 0.5 });
     for (let i = 0; i < 4; i++) {
@@ -126,7 +113,6 @@ export default function opLanding({ root, win }: GameContext): () => void {
     petals.visible = false;
     world.scene.add(petals);
 
-    // ---------- estado ----------
     let attempt = 0;
     let best = 0;
     let rover: Rover | null = null;
@@ -173,11 +159,10 @@ export default function opLanding({ root, win }: GameContext): () => void {
       aim.visible = true;
       markGroup.visible = true;
       camPos.set(p.x - 20, p.y + 22, p.z - 28);
-      ui.say(attempt === 1 ? 'Usa el joystick o las flechas para encender los cohetes laterales. Lleva el círculo celeste (dónde caerás) hasta el anillo dorado.' : `Intento ${attempt}. ¡Tú puedes!`);
+      ui.say(attempt === 1 ? tr('Use the joystick or the arrow keys to fire the side rockets. Move the light-blue circle (where you will land) onto the golden ring.', 'Usa el joystick o las flechas para encender los cohetes laterales. Lleva el círculo celeste (dónde caerás) hasta el anillo dorado.') : tr(`Attempt ${attempt}. You can do it!`, `Intento ${attempt}. ¡Tú puedes!`));
     };
 
     const toCam = (x: number, y: number) => {
-      // dirección relativa a la cámara (arriba en pantalla = alejarse de la cámara)
       const f = new Vector3();
       world.camera.getWorldDirection(f);
       f.y = 0;
@@ -196,12 +181,11 @@ export default function opLanding({ root, win }: GameContext): () => void {
       ring.material.opacity = 0.45 + 0.35 * Math.sin(t * 4);
       if (phase === 'descent' || phase === 'rockets') {
         const alt = p.y - world.heightAt(p.x, p.z);
-        // ráfagas de viento
         gust -= dt;
         if (gust < 0) {
           gust = 3 + Math.random() * 4;
           gustDir = new Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize().multiplyScalar(2.5 + Math.random() * 2.5);
-          if (phase === 'descent') ui.toast('💨 ¡Ráfaga!', 900);
+          if (phase === 'descent') ui.toast(tr('💨 Gust!', '💨 ¡Ráfaga!'), 900);
         }
         const gk = Math.max(0, Math.sin(Math.max(0, gust) * 1.2));
         const steer = toCam(controls.steer, controls.throttle);
@@ -215,13 +199,12 @@ export default function opLanding({ root, win }: GameContext): () => void {
             v.z *= 9 / hs;
           }
         }
-        // arrastre hacia la velocidad del viento
         const target = wind.clone().addScaledVector(gustDir, gk);
         v.x += (target.x - v.x) * 0.25 * dt;
         v.z += (target.z - v.z) * 0.25 * dt;
         if (phase === 'descent' && alt < 22) {
           phase = 'rockets';
-          ui.say('¡Cohetes de frenado encendidos! Se suelta la pelota…', 'ok');
+          ui.say(tr('Braking rockets fired! The ball is released…', '¡Cohetes de frenado encendidos! Se suelta la pelota…'), 'ok');
           sfx.radio();
         }
         if (phase === 'rockets') {
@@ -239,7 +222,6 @@ export default function opLanding({ root, win }: GameContext): () => void {
         const pl = predictLanding();
         aim.position.set(pl.x, world.heightAt(pl.x, pl.z) + 0.3, pl.z);
         if (phase === 'rockets' && alt < 12) {
-          // cortar el cable: la pelota cae libre
           phase = 'ball';
           aim.visible = false;
           const bw = new Vector3();
@@ -255,19 +237,16 @@ export default function opLanding({ root, win }: GameContext): () => void {
           flames.visible = true;
           sfx.beep();
         }
-        ui.card('alt', 'ALTITUD', `${Math.max(0, alt).toFixed(0)} m`);
-        ui.card('fuel', 'COHETES LATERALES', `${fuel.toFixed(0)} %`);
+        ui.card('alt', tr('ALTITUDE', 'ALTITUD'), `${Math.max(0, alt).toFixed(0)} m`);
+        ui.card('fuel', tr('SIDE ROCKETS', 'COHETES LATERALES'), `${fuel.toFixed(0)} %`);
         const d = Math.hypot(pl.x - EAGLE.x, pl.z - EAGLE.z);
-        ui.card('dist', 'CAÍDA ↔ CRÁTER', `${d.toFixed(0)} m`);
-        // cámara: arriba y detrás, mirando al suelo
+        ui.card('dist', tr('DROP ↔ CRATER', 'CAÍDA ↔ CRÁTER'), `${d.toFixed(0)} m`);
         const want = new Vector3(p.x - 16, p.y + 26, p.z - 24);
         camPos.lerp(want, Math.min(1, dt * 2));
         camLook.lerp(new Vector3(p.x + v.x * 2, world.heightAt(p.x, p.z), p.z + v.z * 2), Math.min(1, dt * 3));
       } else if (phase === 'ball') {
-        // concha y paracaídas se van volando
         shellGroup.position.addScaledVector(shellV, dt);
         shellV.y -= 1.5 * dt;
-        // física de la pelota de bolsas de aire
         v.y -= G * dt;
         ball.position.addScaledVector(v, dt);
         const gy = world.heightAt(ball.position.x, ball.position.z) + BALL_R;
@@ -277,16 +256,14 @@ export default function opLanding({ root, win }: GameContext): () => void {
           const vn = v.dot(n);
           if (vn < 0) {
             const vnAbs = -vn;
-            v.addScaledVector(n, -vn * 1.55); // rebote (restitución 0,55)
+            v.addScaledVector(n, -vn * 1.55);
             if (vnAbs > 2) {
               bounces++;
               sfx.beep();
-              ui.toast(`¡Rebote ${bounces}!`, 600);
+              ui.toast(tr(`Bounce ${bounces}!`, `¡Rebote ${bounces}!`), 600);
             }
           }
-          // fricción al rodar
           v.multiplyScalar(1 - Math.min(1, dt * 0.55));
-          // la pendiente acelera la pelota (dentro del cráter rueda hacia el centro)
           v.x += n.x * G * dt * 0.9;
           v.z += n.z * G * dt * 0.9;
         }
@@ -297,14 +274,14 @@ export default function opLanding({ root, win }: GameContext): () => void {
         else still = 0;
         if (still > 0.8) {
           phase = 'open';
-          ui.say('La pelota se detuvo. Se desinflan las bolsas y se abren los pétalos…');
+          ui.say(tr('The ball stopped. The airbags deflate and the petals open…', 'La pelota se detuvo. Se desinflan las bolsas y se abren los pétalos…'));
         }
         camLook.lerp(ball.position, Math.min(1, dt * 4));
         const want = ball.position.clone().add(new Vector3(-14, 10, -14));
         camPos.lerp(want, Math.min(1, dt * 1.6));
         const dd = Math.hypot(ball.position.x - EAGLE.x, ball.position.z - EAGLE.z);
-        ui.card('dist', 'PELOTA ↔ CRÁTER', `${dd.toFixed(0)} m`);
-        ui.card('alt', 'REBOTES', String(bounces));
+        ui.card('dist', tr('BALL ↔ CRATER', 'PELOTA ↔ CRÁTER'), `${dd.toFixed(0)} m`);
+        ui.card('alt', tr('BOUNCES', 'REBOTES'), String(bounces));
       } else if (phase === 'open') {
         openT += dt;
         ball.scale.setScalar(Math.max(0.05, 1 - openT * 0.7));
@@ -345,19 +322,19 @@ export default function opLanding({ root, win }: GameContext): () => void {
       best = Math.max(best, stars);
       if (inside) sfx.win();
       else sfx.ok();
-      const title = inside ? '⛳ ¡HOYO EN UNO!' : d < 35 ? '¡Muy cerca!' : '¡Aterrizaje seguro!';
+      const title = inside ? tr('⛳ HOLE IN ONE!', '⛳ ¡HOYO EN UNO!') : d < 35 ? tr('Very close!', '¡Muy cerca!') : tr('Safe landing!', '¡Aterrizaje seguro!');
       const text = inside
-        ? '¡Igual que Opportunity en 2004! Rodó hasta quedar dentro del cráter Eagle, con rocas en capas justo enfrente: un lugar perfecto para buscar pistas de agua.'
-        : `La pelota quedó a ${d.toFixed(0)} m del cráter Eagle. Opportunity tuvo suerte y rodó justo adentro: ¿puedes lograrlo?`;
+        ? tr('Just like Opportunity in 2004! It rolled right into Eagle crater, with layered rocks right in front: a perfect place to look for water clues.', '¡Igual que Opportunity en 2004! Rodó hasta quedar dentro del cráter Eagle, con rocas en capas justo enfrente: un lugar perfecto para buscar pistas de agua.')
+        : tr(`The ball stopped ${d.toFixed(0)} m from Eagle crater. Opportunity was lucky and rolled right in: can you do it?`, `La pelota quedó a ${d.toFixed(0)} m del cráter Eagle. Opportunity tuvo suerte y rodó justo adentro: ¿puedes lograrlo?`);
       const panel = ui.panel(`
-        <p class="lk-brief__kicker">RESULTADO · INTENTO ${attempt}</p>
+        <p class="lk-brief__kicker">${tr('RESULT · ATTEMPT', 'RESULTADO · INTENTO')} ${attempt}</p>
         <h3 style="margin:6px 0 4px;font-family:var(--font-ui);font-size:28px">${title}</h3>
         <p style="margin:0 0 6px;font-size:30px;letter-spacing:4px;color:#fde047">${'★'.repeat(stars)}<span style="opacity:.25">${'★'.repeat(3 - stars)}</span></p>
         <p style="margin:0 0 6px;line-height:1.5">${text}</p>
-        <p style="margin:0 0 14px;color:var(--muted)">Rebotes: ${bounces} · Mejor resultado: ${'★'.repeat(best)}</p>
+        <p style="margin:0 0 14px;color:var(--muted)">${tr('Bounces', 'Rebotes')}: ${bounces} · ${tr('Best result', 'Mejor resultado')}: ${'★'.repeat(best)}</p>
         <div class="lk-brief__row">
-          <button type="button" class="lk-btn" data-again>↺ Intentar otra vez</button>
-          <button type="button" class="lk-btn lk-btn--go" data-end>¡Misión cumplida!</button>
+          <button type="button" class="lk-btn" data-again>↺ ${tr('Try again', 'Intentar otra vez')}</button>
+          <button type="button" class="lk-btn lk-btn--go" data-end>${tr('Mission accomplished!', '¡Misión cumplida!')}</button>
         </div>`);
       panel.querySelector('[data-again]')!.addEventListener('click', () => {
         world.scene.remove(ball);
@@ -376,18 +353,18 @@ export default function opLanding({ root, win }: GameContext): () => void {
   };
 
   brief(root, {
-    kicker: 'OPPORTUNITY · MISIÓN 1',
-    title: '¡Hoyo en uno!',
-    text: 'Opportunity llegó a Marte rebotando dentro de bolsas de aire. ¡Y terminó justo dentro de un cráter pequeñito!',
-    goal: 'Guía la cápsula con los cohetes laterales y haz que la pelota termine dentro del cráter Eagle.',
+    kicker: tr('OPPORTUNITY · MISSION 1', 'OPPORTUNITY · MISIÓN 1'),
+    title: tr('Hole in one!', '¡Hoyo en uno!'),
+    text: tr('Opportunity arrived on Mars bouncing inside airbags. And it ended up right inside a tiny crater!', 'Opportunity llegó a Marte rebotando dentro de bolsas de aire. ¡Y terminó justo dentro de un cráter pequeñito!'),
+    goal: tr('Guide the capsule with the side rockets and make the ball end up inside Eagle crater.', 'Guía la cápsula con los cohetes laterales y haz que la pelota termine dentro del cráter Eagle.'),
     art: MER_SVG,
     accent: '#f59e0b',
     soft: '#fcd34d',
     guess: {
-      q: '¿Por qué los científicos llamaron «hoyo en uno» al aterrizaje de Opportunity?',
-      options: ['Porque rodó y quedó dentro de un cráter pequeño', 'Porque cayó en un agujero hecho por astronautas'],
+      q: tr('Why did scientists call Opportunity\'s landing a «hole in one»?', '¿Por qué los científicos llamaron «hoyo en uno» al aterrizaje de Opportunity?'),
+      options: [tr('Because it rolled and stopped inside a small crater', 'Porque rodó y quedó dentro de un cráter pequeño'), tr('Because it fell into a hole made by astronauts', 'Porque cayó en un agujero hecho por astronautas')],
       correct: 0,
-      why: 'Como en el golf: la pelota de bolsas de aire rodó y entró justo en el cráter Eagle, de solo unos 22 metros.',
+      why: tr('Like in golf: the airbag ball rolled right into Eagle crater, only about 22 meters wide.', 'Como en el golf: la pelota de bolsas de aire rodó y entró justo en el cráter Eagle, de solo unos 22 metros.'),
     },
     onStart: start,
   });

@@ -1,16 +1,7 @@
-/**
- * SPIRIT · MISIÓN 3 · La rueda rota.
- *
- * En 2006 la rueda delantera derecha de Spirit dejó de girar. Los ingenieros decidieron
- * manejarlo de reversa, arrastrando la rueda trabada. En 2007, ese surco dejó al descubierto
- * un suelo blanquísimo de sílice cerca de Home Plate: ¡pista de agua caliente!
- * Mecánica: conducción continua vista desde arriba. Hacia adelante casi no avanza y gira solo;
- * de reversa avanza, pero se desvía hacia la rueda rota y hay que corregir. El surco revela
- * 3 manchas de sílice; luego hay que llegar a Home Plate.
- */
 import type { GameContext } from './index';
 import { brief, injectKit, MER_SVG, say, sfx, stopSpeak, theme } from './lkKit';
 import { rng } from '../ui/moonTexture';
+import { tr } from '../i18n';
 
 const MW = 900;
 const MH = 1400;
@@ -52,13 +43,13 @@ export default function spWheel({ root, win }: GameContext): () => void {
   const start = () => {
     root.innerHTML = `
       <div class="lk"${theme('#3b82f6', '#93c5fd')}><div class="lk__wrap">
-        <div class="lk-top"><p class="lk-task"><i>3</i>Maneja de reversa, descubre 3 manchas blancas y llega a Home Plate.</p></div>
-        <div class="spw__view"><canvas width="${VW}" height="${VH}" aria-label="Mapa visto desde arriba con Spirit"></canvas></div>
+        <div class="lk-top"><p class="lk-task"><i>3</i>${tr('Drive in reverse, uncover 3 white patches and reach Home Plate.', 'Maneja de reversa, descubre 3 manchas blancas y llega a Home Plate.')}</p></div>
+        <div class="spw__view"><canvas width="${VW}" height="${VH}" aria-label="${tr('Top-down map with Spirit', 'Mapa visto desde arriba con Spirit')}"></canvas></div>
         <div class="spw__pad">
-          <button type="button" class="lk-btn" data-k="left"><b>⟲</b>Girar</button>
-          <button type="button" class="lk-btn" data-k="fwd"><b>⬆</b>Adelante</button>
-          <button type="button" class="lk-btn" data-k="back"><b>⬇</b>Reversa</button>
-          <button type="button" class="lk-btn" data-k="right"><b>⟳</b>Girar</button>
+          <button type="button" class="lk-btn" data-k="left"><b>⟲</b>${tr('Turn', 'Girar')}</button>
+          <button type="button" class="lk-btn" data-k="fwd"><b>⬆</b>${tr('Forward', 'Adelante')}</button>
+          <button type="button" class="lk-btn" data-k="back"><b>⬇</b>${tr('Reverse', 'Reversa')}</button>
+          <button type="button" class="lk-btn" data-k="right"><b>⟳</b>${tr('Turn', 'Girar')}</button>
         </div>
         <p class="lk-say" data-say></p>
       </div></div>`;
@@ -66,7 +57,6 @@ export default function spWheel({ root, win }: GameContext): () => void {
     const g = canvas.getContext('2d')!;
     const sayEl = root.querySelector<HTMLElement>('[data-say]')!;
 
-    // ---------- mapa (fondo pre-dibujado) ----------
     const rand = rng(4);
     const rocks: { x: number; y: number; r: number }[] = [];
     const far = (x: number, y: number, d: number) =>
@@ -107,7 +97,6 @@ export default function spWheel({ root, win }: GameContext): () => void {
         b.stroke();
       }
     }
-    // Home Plate: meseta clara con capas
     b.fillStyle = '#a9927a';
     b.beginPath();
     b.ellipse(HOME.x, HOME.y, HOME.rx, HOME.ry, 0, 0, Math.PI * 2);
@@ -137,8 +126,7 @@ export default function spWheel({ root, win }: GameContext): () => void {
       b.fill();
     }
 
-    // ---------- estado ----------
-    const rover = { x: 450, y: 1300, a: Math.PI, sp: 0 }; // a = rumbo (0 = hacia arriba); empieza mirando hacia abajo
+    const rover = { x: 450, y: 1300, a: Math.PI, sp: 0 };
     const keys = { left: false, right: false, fwd: false, back: false };
     const trench: { x: number; y: number }[] = [];
     const found = SPOTS.map(() => false);
@@ -154,12 +142,11 @@ export default function spWheel({ root, win }: GameContext): () => void {
       msgCool = 1.2;
       say(sayEl, text, kind);
     };
-    say(sayEl, 'La parte de atrás de Spirit apunta hacia Home Plate. Mantén «Reversa» y corrige con los giros: ¡la rueda rota lo desvía!');
+    say(sayEl, tr('The back of Spirit points toward Home Plate. Hold «Reverse» and correct with the turns: the broken wheel pulls it off course!', 'La parte de atrás de Spirit apunta hacia Home Plate. Mantén «Reversa» y corrige con los giros: ¡la rueda rota lo desvía!'));
 
-    // rueda rota (delantera derecha) en coordenadas del mundo
     const brokenWheel = () => {
       const lx = 16;
-      const ly = -20; // adelante = y negativo local
+      const ly = -20;
       const c = Math.cos(rover.a);
       const s = Math.sin(rover.a);
       return { x: rover.x + lx * c - ly * s, y: rover.y + lx * s + ly * c };
@@ -176,11 +163,11 @@ export default function spWheel({ root, win }: GameContext): () => void {
       let drift = 0;
       if (keys.back) {
         speed = -72;
-        drift = 0.28; // la rueda arrastrada tira hacia un lado
+        drift = 0.28;
       } else if (keys.fwd) {
         speed = 16;
         drift = 1.5;
-        msg('¡La rueda trabada no deja avanzar y lo hace girar! Prueba de reversa.', 'warn');
+        msg(tr('The jammed wheel won\'t let it go forward and makes it turn! Try reverse.', '¡La rueda trabada no deja avanzar y lo hace girar! Prueba de reversa.'), 'warn');
       }
       if (inDune(rover.x, rover.y)) speed *= 0.55;
       if (keys.left) rover.a -= 1.4 * dt;
@@ -189,7 +176,7 @@ export default function spWheel({ root, win }: GameContext): () => void {
       const nx = rover.x + Math.sin(rover.a) * speed * dt;
       const ny = rover.y - Math.cos(rover.a) * speed * dt;
       if (speed && blocked(nx, ny)) {
-        msg('¡Cuidado, una roca! Gira para esquivarla.', 'warn');
+        msg(tr('Careful, a rock! Turn to avoid it.', '¡Cuidado, una roca! Gira para esquivarla.'), 'warn');
         sfx.soft();
       } else if (speed) {
         rover.x = nx;
@@ -205,19 +192,18 @@ export default function spWheel({ root, win }: GameContext): () => void {
             const n = found.filter(Boolean).length;
             lastMsg = '';
             msgCool = 0;
-            msg(n < 3 ? `¡Suelo blanco! La rueda arrastrada destapó sílice (${n}/3). ¡Busca más manchas!` : '¡3 de 3! Ahora llega a Home Plate, la meseta clara de arriba.', 'ok');
+            msg(n < 3 ? tr(`White soil! The dragged wheel uncovered silica (${n}/3). Look for more patches!`, `¡Suelo blanco! La rueda arrastrada destapó sílice (${n}/3). ¡Busca más manchas!`) : tr('3 of 3! Now reach Home Plate, the light plateau at the top.', '¡3 de 3! Ahora llega a Home Plate, la meseta clara de arriba.'), 'ok');
             msgCool = 3;
           }
         });
       }
-      // llegada
       const inHome = ((rover.x - HOME.x) / HOME.rx) ** 2 + ((rover.y - HOME.y) / HOME.ry) ** 2 < 1;
       if (inHome) {
         if (found.every(Boolean)) {
           done = true;
           keys.back = keys.fwd = false;
           finish();
-        } else msg(`Llegaste a Home Plate, pero faltan manchas de sílice (${found.filter(Boolean).length}/3). Vuelve a buscarlas: brillan de vez en cuando.`, 'warn');
+        } else msg(tr(`You reached Home Plate, but some silica patches are missing (${found.filter(Boolean).length}/3). Go back and find them: they shine every now and then.`, `Llegaste a Home Plate, pero faltan manchas de sílice (${found.filter(Boolean).length}/3). Vuelve a buscarlas: brillan de vez en cuando.`), 'warn');
       }
       camY += (rover.y - VH * 0.45 - camY) * Math.min(1, dt * 3);
       camY = Math.max(0, Math.min(MH - VH, camY));
@@ -227,7 +213,6 @@ export default function spWheel({ root, win }: GameContext): () => void {
       g.drawImage(bg, 0, camY, VW, VH, 0, 0, VW, VH);
       g.save();
       g.translate(0, -camY);
-      // pistas: brillos ocasionales de las manchas no descubiertas
       SPOTS.forEach((s, i) => {
         if (found[i]) {
           g.fillStyle = '#f8f8f2';
@@ -248,7 +233,6 @@ export default function spWheel({ root, win }: GameContext): () => void {
           }
         }
       });
-      // surco de la rueda arrastrada
       if (trench.length > 1) {
         g.strokeStyle = 'rgba(70,35,18,.65)';
         g.lineWidth = 9;
@@ -258,8 +242,6 @@ export default function spWheel({ root, win }: GameContext): () => void {
         trench.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
         g.stroke();
       }
-      // huellas de las demás ruedas (sutiles)
-      // rover visto desde arriba
       g.save();
       g.translate(rover.x, rover.y);
       g.rotate(rover.a);
@@ -288,8 +270,7 @@ export default function spWheel({ root, win }: GameContext): () => void {
       g.fillStyle = '#e5e7eb';
       g.fillRect(-12, -24, 24, 18);
       g.fillStyle = '#111827';
-      g.fillRect(-6, -30, 12, 6); // cámaras (frente)
-      // flecha de "atrás"
+      g.fillRect(-6, -30, 12, 6);
       g.fillStyle = '#22c55e';
       g.beginPath();
       g.moveTo(0, 40);
@@ -298,7 +279,6 @@ export default function spWheel({ root, win }: GameContext): () => void {
       g.closePath();
       g.fill();
       g.restore();
-      // destellos al descubrir
       bursts = bursts.filter((p) => (p.t += 0.016) < 1);
       for (const p of bursts) {
         g.strokeStyle = `rgba(255,255,255,${1 - p.t})`;
@@ -308,32 +288,29 @@ export default function spWheel({ root, win }: GameContext): () => void {
         g.stroke();
       }
       g.restore();
-      // HUD
       g.fillStyle = 'rgba(0,0,0,.55)';
       g.fillRect(12, 12, 236, 40);
       g.fillStyle = '#fff';
       g.font = '800 17px system-ui';
       g.textAlign = 'left';
-      g.fillText(`Sílice ${found.filter(Boolean).length}/3`, 24, 38);
+      g.fillText(`${tr('Silica', 'Sílice')} ${found.filter(Boolean).length}/3`, 24, 38);
       found.forEach((f, i) => {
         g.fillStyle = f ? '#f8f8f2' : 'rgba(255,255,255,.2)';
         g.beginPath();
         g.arc(150 + i * 30, 32, 10, 0, Math.PI * 2);
         g.fill();
       });
-      // brújula hacia Home Plate si no se ve
       if (HOME.y + HOME.ry < camY) {
         g.fillStyle = 'rgba(0,0,0,.55)';
         g.fillRect(VW - 210, 12, 198, 40);
         g.fillStyle = '#fde68a';
         g.fillText('⬆ Home Plate', VW - 196, 38);
       }
-      // indicador de rueda rota
       g.fillStyle = 'rgba(127,29,29,.75)';
       g.fillRect(12, VH - 52, 248, 40);
       g.fillStyle = '#fecaca';
       g.font = '700 15px system-ui';
-      g.fillText('⚠ Rueda delantera derecha trabada', 22, VH - 26);
+      g.fillText(tr('⚠ Front right wheel jammed', '⚠ Rueda delantera derecha trabada'), 22, VH - 26);
     };
 
     let last = performance.now();
@@ -347,7 +324,6 @@ export default function spWheel({ root, win }: GameContext): () => void {
     };
     raf = requestAnimationFrame(loop);
 
-    // ---------- controles (mantener presionado) ----------
     root.querySelectorAll<HTMLButtonElement>('[data-k]').forEach((btn) => {
       const k = btn.dataset.k as keyof typeof keys;
       const on = (e: Event) => {
@@ -394,10 +370,12 @@ export default function spWheel({ root, win }: GameContext): () => void {
       const box = document.createElement('div');
       box.className = 'lk-learn';
       box.innerHTML = `
-        <h4>¿QUÉ APRENDISTE?</h4>
-        <p style="margin:0 0 12px">Cuando una rueda de Spirit se trabó en 2006, los ingenieros no se rindieron: lo manejaron <b>de reversa</b>.
-        Y en 2007, el surco de esa rueda destapó <b>suelo de sílice</b>, una pista de que hubo agua caliente. ¡Un problema se convirtió en un descubrimiento!</p>
-        <button type="button" class="lk-btn lk-btn--go" data-end>¡Misión cumplida!</button>`;
+        <h4>${tr('WHAT DID YOU LEARN?', '¿QUÉ APRENDISTE?')}</h4>
+        <p style="margin:0 0 12px">${tr(
+          'When one of Spirit\'s wheels jammed in 2006, the engineers did not give up: they drove it <b>in reverse</b>. And in 2007, the furrow of that wheel uncovered <b>silica soil</b>, a clue that there was hot water. A problem became a discovery!',
+          'Cuando una rueda de Spirit se trabó en 2006, los ingenieros no se rindieron: lo manejaron <b>de reversa</b>. Y en 2007, el surco de esa rueda destapó <b>suelo de sílice</b>, una pista de que hubo agua caliente. ¡Un problema se convirtió en un descubrimiento!',
+        )}</p>
+        <button type="button" class="lk-btn lk-btn--go" data-end>${tr('Mission accomplished!', '¡Misión cumplida!')}</button>`;
       wrap.appendChild(box);
       box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       box.querySelector('[data-end]')!.addEventListener('click', win);
@@ -405,18 +383,18 @@ export default function spWheel({ root, win }: GameContext): () => void {
   };
 
   brief(root, {
-    kicker: 'SPIRIT · MISIÓN 3',
-    title: 'La rueda rota',
-    text: 'Una de las 6 ruedas de Spirit se trabó y dejó de girar. ¡Pero la misión debía seguir!',
-    goal: 'Maneja de reversa arrastrando la rueda, encuentra 3 manchas blancas y llega a Home Plate.',
+    kicker: tr('SPIRIT · MISSION 3', 'SPIRIT · MISIÓN 3'),
+    title: tr('The broken wheel', 'La rueda rota'),
+    text: tr('One of Spirit\'s 6 wheels jammed and stopped turning. But the mission had to go on!', 'Una de las 6 ruedas de Spirit se trabó y dejó de girar. ¡Pero la misión debía seguir!'),
+    goal: tr('Drive in reverse dragging the wheel, find 3 white patches and reach Home Plate.', 'Maneja de reversa arrastrando la rueda, encuentra 3 manchas blancas y llega a Home Plate.'),
     art: MER_SVG,
     accent: '#3b82f6',
     soft: '#93c5fd',
     guess: {
-      q: 'Cuando la rueda de Spirit se trabó en 2006, ¿qué hicieron los ingenieros?',
-      options: ['Lo manejaron de reversa, arrastrando la rueda', 'Lo dejaron quieto para siempre'],
+      q: tr('When Spirit\'s wheel jammed in 2006, what did the engineers do?', 'Cuando la rueda de Spirit se trabó en 2006, ¿qué hicieron los ingenieros?'),
+      options: [tr('They drove it in reverse, dragging the wheel', 'Lo manejaron de reversa, arrastrando la rueda'), tr('They left it still forever', 'Lo dejaron quieto para siempre')],
       correct: 0,
-      why: 'Descubrieron que de reversa avanzaba mejor, arrastrando la rueda rota. ¡Y así siguió explorando varios años más!',
+      why: tr('They discovered it moved better in reverse, dragging the broken wheel. And that is how it kept exploring for several more years!', 'Descubrieron que de reversa avanzaba mejor, arrastrando la rueda rota. ¡Y así siguió explorando varios años más!'),
     },
     onStart: start,
   });

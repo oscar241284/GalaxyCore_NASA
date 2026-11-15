@@ -1,9 +1,3 @@
-/**
- * Mundo 3D compartido por podios → despegue → puzzle → nivel extra.
- * Una sola escena + cámara perspectiva. Los 4 podios se reparten de modo que cada uno
- * quede centrado en su cuarto vertical de pantalla para cualquier aspect ratio
- * (se recalcula en resize). Se crea una vez por sesión y se libera al volver a Home.
- */
 import {
   AdditiveBlending,
   AmbientLight,
@@ -38,9 +32,8 @@ import { starPoints, ThrusterFlames } from '../three/effects';
 export const CAM_Z = 10;
 export const FOV = 40;
 const PODIUM_H = 0.7;
-const CONTENT_H = 2.15; // podio + robot (unidades sin escalar)
+const CONTENT_H = 2.15;
 const COMPACT_SCALE = 0.8;
-/** fracción de alto de pantalla ocupada por la franja de podios en modo compacto */
 export const COMPACT_REGION = 0.62;
 
 export type WorldMode = 'podiums' | 'launch' | 'puzzle' | 'final';
@@ -81,28 +74,22 @@ export interface World {
   camera: PerspectiveCamera;
   slots: Slot[];
   mode: WorldMode;
-  /** 0 = layout normal, 1 = compacto (80 % pegado arriba) — interpolable con GSAP */
   layout: { compact: number };
   stars: Points;
   flames: ThrusterFlames | null;
   slot(id: RobotId): Slot;
   applyLayout(): void;
-  /** posición/escala del robot "centrado y grande" frente a la cámara */
   heroPose(): { pos: Vector3; scale: number };
-  /** proyecta a píxeles de pantalla un punto del mundo */
   toScreen(p: Vector3): { x: number; y: number };
-  /** punto (mundo) de la base del podio i, para posicionar etiquetas DOM */
   podiumBase(i: number): Vector3;
   fadePodium(slot: Slot, v: number): void;
   fadeRobot(slot: Slot, v: number): void;
   ensureFlames(slot: Slot): ThrusterFlames;
   disposeFlames(): void;
   resetCamera(): void;
-  /** devuelve todos los robots a sus podios, piezas ensambladas, todo visible */
   resetAll(): void;
   activate(): void;
   ambient: AmbientLight;
-  /** luz frontal para el robot en pose héroe (despegue/puzzle) */
   heroLight: DirectionalLight;
 }
 
@@ -132,7 +119,6 @@ function cloneMaterials(obj: Object3D, out: MatState[]) {
   });
 }
 
-/** Re-pivota cada pieza en su centro visual (para arrastrar/rotar alrededor del centro). */
 function repivotPieces(model: RobotModel) {
   const g = model.group;
   g.updateMatrixWorld(true);
@@ -141,7 +127,7 @@ function repivotPieces(model: RobotModel) {
   for (const p of model.pieces) {
     box.setFromObject(p);
     if (box.isEmpty()) continue;
-    box.getCenter(c); // mundo
+    box.getCenter(c);
     const cLocalPiece = p.worldToLocal(c.clone());
     for (const child of p.children) child.position.sub(cLocalPiece);
     const cGroup = g.worldToLocal(c.clone());
@@ -183,7 +169,6 @@ function createWorld(): World {
   const stars = starPoints(900, 70);
   scene.add(stars);
 
-  // geometrías propias (se liberan al destruir el mundo)
   const podGeo = new CylinderGeometry(1.0, 1.15, PODIUM_H, 8);
   const capGeo = new CylinderGeometry(1.05, 1.05, 0.06, 8);
   const ringGeo = new TorusGeometry(1.08, 0.035, 6, 32);
@@ -282,11 +267,10 @@ function createWorld(): World {
   const slotLayout = (k: number) => {
     const { hh, hw } = frustumAt(CAM_Z);
     const H = hh * 2;
-    const cw = (hw * 2) / 4;
+    const cw = (hw * 2) / ROBOT_ORDER.length;
     const sN = Math.min(cw / 2.75, (H * 0.6) / CONTENT_H);
     const sC = sN * COMPACT_SCALE;
     const baseN = -0.05 * H - (CONTENT_H * sN) / 2;
-    // compacto: la parte alta del robot queda bajo el header (~11 % de alto)
     const regionTop = H / 2 - 0.105 * H;
     const regionBottom = H / 2 - COMPACT_REGION * H;
     const baseC = Math.max(regionBottom + 0.2 * H, regionTop - CONTENT_H * sC);
@@ -399,7 +383,6 @@ function createWorld(): World {
     },
   };
 
-  // loop del mundo: estrellas, podios (hover/giro) y llamas
   const offFrame = onFrame((dt, t) => {
     stars.rotation.y = t * 0.004;
     stars.rotation.x = Math.sin(t * 0.05) * 0.02;

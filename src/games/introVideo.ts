@@ -1,16 +1,5 @@
-/**
- * INTRO EN VIDEO antes de un minijuego.
- *
- * Uso (en src/games/index.ts):
- *   play: withIntro('videos/moon_1.mp4', lunarLanding)
- *
- * El archivo va en la carpeta `public/` del proyecto (por ejemplo public/videos/moon_1.mp4).
- * Vite copia esa carpeta tal cual al compilar, así que la ruta funciona en local y publicada.
- *
- * Flujo: se reproduce el video → al terminar (o al tocar "Saltar") aparece el botón ¡JUGAR!
- * → se monta el juego en el mismo contenedor.
- */
 import type { GameContext, MiniGame } from './index';
+import { tr } from '../i18n';
 
 const CSS = `
 .iv { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; background: #000; }
@@ -52,27 +41,23 @@ function injectStyles(): void {
 
 const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>';
 
-/**
- * Envuelve un minijuego para mostrar antes un video.
- * @param file ruta del video dentro de `public/` (sin barra inicial), p. ej. 'videos/moon_1.mp4'
- */
-export function withIntro(file: string, game: MiniGame, texts = { kicker: 'MISIÓN 1', title: '¿Listo para alunizar?' }): MiniGame {
+export function withIntro(file: string, game: MiniGame, texts = { kicker: tr('MISSION 1', 'MISIÓN 1'), title: tr('Ready to land on the Moon?', '¿Listo para alunizar?') }): MiniGame {
   return ({ root, win }: GameContext) => {
     injectStyles();
     const src = `${import.meta.env.BASE_URL}${file}`;
     root.innerHTML = `
       <div class="iv">
-        <video playsinline preload="auto" src="${src}" aria-label="Video de introducción"></video>
+        <video playsinline preload="auto" src="${src}" aria-label="${tr('Intro video', 'Video de introducción')}"></video>
         <div class="iv__tools">
           <button type="button" class="iv__btn" data-unmute hidden>🔊 Activar sonido</button>
-          <button type="button" class="iv__btn" data-skip>Saltar video ⏭</button>
+          <button type="button" class="iv__btn" data-skip>${tr('Skip video', 'Saltar video')} ⏭</button>
         </div>
         <div class="iv__bar" aria-hidden="true"><s></s></div>
         <div class="iv__end" hidden>
           <p>${texts.kicker}</p>
           <h3>${texts.title}</h3>
-          <button type="button" class="iv__play" data-play>${PLAY}¡JUGAR!</button>
-          <button type="button" class="iv__btn" data-replay>↺ Ver el video otra vez</button>
+          <button type="button" class="iv__play" data-play>${PLAY}${tr('PLAY!', '¡JUGAR!')}</button>
+          <button type="button" class="iv__btn" data-replay>↺ ${tr('Watch the video again', 'Ver el video otra vez')}</button>
         </div>
       </div>`;
 
@@ -95,8 +80,6 @@ export function withIntro(file: string, game: MiniGame, texts = { kicker: 'MISI�
       end.hidden = true;
       tools.hidden = false;
       video.currentTime = 0;
-      // el clic en el nivel cuenta como interacción, así que casi siempre suena;
-      // si el navegador lo bloquea, se reproduce en silencio y se ofrece activar el sonido
       video.muted = false;
       video.play().catch(() => {
         video.muted = true;
@@ -116,7 +99,7 @@ export function withIntro(file: string, game: MiniGame, texts = { kicker: 'MISI�
     };
 
     video.addEventListener('ended', showEnd);
-    video.addEventListener('error', showEnd); // si falta el archivo, se pasa directo al botón JUGAR
+    video.addEventListener('error', showEnd);
     video.addEventListener('timeupdate', () => {
       if (video.duration) bar.style.width = `${(video.currentTime / video.duration) * 100}%`;
     });

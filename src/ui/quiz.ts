@@ -1,9 +1,8 @@
-/** Contenido del modal de quiz: tarjeta informativa + pregunta de opción múltiple. */
 import type { QuizQuestion } from '../data/quizzes';
 import type { LevelInfo } from '../types';
 import { esc } from './modal';
+import { tr } from '../i18n';
 
-/** Estilos del quiz (se insertan una sola vez en la página). */
 const QUIZ_CSS = `
 .quiz__card {
   margin-bottom: 18px;
@@ -122,11 +121,9 @@ function injectStyles(): void {
 }
 
 export interface QuizResult {
-  /** intentos fallidos antes de acertar */
   mistakes: number;
 }
 
-/** Baraja una copia del arreglo (Fisher-Yates). */
 function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -136,10 +133,6 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/**
- * Crea el cuerpo del quiz. Llama a `onCorrect` cuando el jugador acierta
- * (tras una breve pausa para que vea el resultado).
- */
 export function buildQuiz(level: LevelInfo, quiz: QuizQuestion, onCorrect: (r: QuizResult) => void): HTMLElement {
   injectStyles();
   const root = document.createElement('div');
@@ -150,7 +143,7 @@ export function buildQuiz(level: LevelInfo, quiz: QuizQuestion, onCorrect: (r: Q
       <p class="quiz__card-text">${esc(level.card.text)}</p>
     </div>
     <p class="quiz__question">${esc(quiz.question)}</p>
-    <div class="quiz__options" role="group" aria-label="Opciones de respuesta"></div>
+    <div class="quiz__options" role="group" aria-label="${tr('Answer options', 'Opciones de respuesta')}"></div>
     <p class="quiz__feedback" role="status" aria-live="polite"></p>`;
 
   const list = root.querySelector<HTMLElement>('.quiz__options')!;
@@ -171,14 +164,14 @@ export function buildQuiz(level: LevelInfo, quiz: QuizQuestion, onCorrect: (r: Q
         b.classList.add('quiz__option--correct');
         list.querySelectorAll('button').forEach((x) => (x.disabled = true));
         feedback.className = 'quiz__feedback quiz__feedback--ok';
-        feedback.textContent = mistakes === 0 ? '¡Correcto a la primera!' : '¡Correcto!';
+        feedback.textContent = mistakes === 0 ? tr('Correct on the first try!', '¡Correcto a la primera!') : tr('Correct!', '¡Correcto!');
         window.setTimeout(() => onCorrect({ mistakes }), 900);
       } else {
         mistakes++;
         b.disabled = true;
         b.classList.add('quiz__option--wrong');
         feedback.className = 'quiz__feedback quiz__feedback--bad';
-        feedback.textContent = `Incorrecto. Pista: ${quiz.hint}`;
+        feedback.textContent = `${tr('Incorrect. Hint', 'Incorrecto. Pista')}: ${quiz.hint}`;
       }
     });
     list.appendChild(b);

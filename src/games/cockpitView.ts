@@ -1,20 +1,8 @@
-/**
- * Vista en primera persona desde la cabina del módulo lunar.
- *
- * El astronauta mira por la ventana delantera, inclinada hacia abajo, y ve la superficie
- * acercarse en perspectiva: cráteres, rocas, montañas en el horizonte, la Tierra, la sombra
- * del propio módulo y la zona de alunizaje marcada sobre el suelo. Una mira fija en el centro
- * indica dónde se posará la nave: el objetivo es llevar la zona hasta la mira.
- *
- * Usa la misma física del simulador 2D (posición lateral, altitud, velocidades); solo cambia
- * cómo se dibuja.
- */
 import { fbm, makeNoise, rng } from '../ui/moonTexture';
+import { tr } from '../i18n';
 
 export interface CockpitState {
-  /** Posición lateral (unidades del mundo, 10 = 1 m). */
   x: number;
-  /** Altitud de las patas sobre el suelo (unidades). */
   alt: number;
   vx: number;
   vy: number;
@@ -24,7 +12,6 @@ export interface CockpitState {
   status: 'brief' | 'countdown' | 'flying' | 'landed' | 'crashed';
   zoneX1: number;
   zoneX2: number;
-  /** Velocidad máxima segura (unidades/s) para colorear la mira. */
   safeVy: number;
   shake: number;
   flash: number;
@@ -40,25 +27,24 @@ interface Feature {
   tone: number;
 }
 
-const THETA = (24 * Math.PI) / 180; // la ventana mira 24° hacia abajo
+const THETA = (24 * Math.PI) / 180;
 const S = Math.sin(THETA);
 const C = Math.cos(THETA);
 const T = Math.tan(THETA);
-const EYE = 45; // los ojos del astronauta están ~4,5 m sobre las patas
-const SUN_ELEV = Math.tan((15 * Math.PI) / 180); // Sol bajo detrás → sombra hacia adelante
+const EYE = 45;
+const SUN_ELEV = Math.tan((15 * Math.PI) / 180);
 
 export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d')!;
   let dpr = 1;
   let cw = 1;
   let ch = 1;
-  // ventana (en píxeles del canvas)
   let wl = 0;
   let wr = 0;
   let wt = 0;
   let wb = 0;
-  let F = 1; // distancia focal en píxeles
-  let ox = 0; // centro de la mira
+  let F = 1;
+  let ox = 0;
   let oy = 0;
   let frame: HTMLCanvasElement | null = null;
   let glass: HTMLCanvasElement | null = null;
@@ -71,13 +57,12 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
   let haze = 0;
   let prevStatus = '';
 
-  // ---------------------------------------------------------------- geometría
   const windowPath = (g: CanvasRenderingContext2D, inset = 0) => {
     const l = wl - inset;
     const r = wr + inset;
     const t = wt - inset;
     const b = wb + inset;
-    const slant = (r - l) * 0.035; // la parte de arriba es un poco más angosta
+    const slant = (r - l) * 0.035;
     const rad = Math.min(r - l, b - t) * 0.07 + inset * 0.5;
     g.beginPath();
     g.moveTo(l + slant + rad, t);
@@ -97,20 +82,17 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     c.width = cw;
     c.height = ch;
     const g = c.getContext('2d')!;
-    // panel metálico
     const bg = g.createLinearGradient(0, 0, cw, ch);
     bg.addColorStop(0, '#2a2e35');
     bg.addColorStop(0.5, '#1b1e23');
     bg.addColorStop(1, '#25292f');
     g.fillStyle = bg;
     g.fillRect(0, 0, cw, ch);
-    // ruido de metal cepillado
     const rand = rng(5);
     for (let i = 0; i < (cw * ch) / 900; i++) {
       g.fillStyle = `rgba(255,255,255,${rand() * 0.025})`;
       g.fillRect(rand() * cw, rand() * ch, rand() * 30 * dpr, 1);
     }
-    // juntas de paneles
     g.strokeStyle = 'rgba(0,0,0,.55)';
     g.lineWidth = 2 * dpr;
     const seams = [
@@ -133,7 +115,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
       g.lineTo(c2 + dpr, d + dpr);
       g.stroke();
     }
-    // marco de la ventana (bisel)
     const bw = Math.max(10, Math.min(cw, ch) * 0.028);
     windowPath(g, bw * 1.1);
     g.fillStyle = '#0d0f12';
@@ -148,7 +129,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     windowPath(g, bw * 0.25);
     g.fillStyle = '#111317';
     g.fill();
-    // tornillos alrededor
     const bolt = (x: number, y: number, r: number) => {
       const rg = g.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r);
       rg.addColorStop(0, '#8b919c');
@@ -178,14 +158,12 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
       bolt(wl - off, y, br);
       bolt(wr + off, y, br);
     }
-    // agujero de la ventana
     g.globalCompositeOperation = 'destination-out';
     windowPath(g);
     g.fill();
     g.globalCompositeOperation = 'source-over';
     frame = c;
 
-    // vidrio: viñeta, reflejo diagonal y sombra interior
     const gc = document.createElement('canvas');
     gc.width = cw;
     gc.height = ch;
@@ -229,8 +207,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     stars = c;
   };
 
-  // ---------------------------------------------------------------- mundo
-  /** Genera cráteres, rocas y manchas sobre el plano del suelo (fuera de la zona). */
   const build = (W: number, zoneX1: number, zoneX2: number, seed: number) => {
     const rand = rng(seed + 7);
     const zw = zoneX2 - zoneX1;
@@ -250,9 +226,8 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     add(480, 'crater', 4, 150, 3.6, 7000, 2400);
     add(500, 'rock', 1.2, 9, 3, 2500, 1200);
     add(1800, 'pebble', 0.4, 1.4, 1, 900, 700);
-    list.sort((a, b) => b.gz - a.gz); // de lejos a cerca
+    list.sort((a, b) => b.gz - a.gz);
     features = list;
-    // perfil de montañas en el horizonte
     const noise = makeNoise(seed + 3);
     ridge = new Float32Array(240);
     for (let i = 0; i < ridge.length; i++) ridge[i] = fbm(noise, i / 24, 0.5, 5);
@@ -270,7 +245,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     ch = canvas.height = Math.max(1, Math.round(r.height * dpr));
     const wide = r.width >= 720;
     if (wide) {
-      // la ventana termina antes de la columna derecha (reloj + cámara), para que nada la tape
       const mon = canvas.parentElement?.querySelector('.ck-monitor')?.getBoundingClientRect();
       wl = cw * 0.085;
       wr = mon && mon.width ? (mon.left - r.left - 34) * dpr : cw * 0.915;
@@ -290,18 +264,16 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     buildStars();
   };
 
-  // ---------------------------------------------------------------- dibujo
   const draw = (s: CockpitState) => {
     const h = Math.max(0, s.alt) + EYE;
     const cx = s.x;
-    const cz = -h / T; // la mira apunta siempre al centro (adelante) de la zona
+    const cz = -h / T;
     const winW = wr - wl;
     const winH = wb - wt;
     const zc = (s.zoneX1 + s.zoneX2) / 2;
     const zw = s.zoneX2 - s.zoneX1;
     const flying = s.status === 'flying' || s.status === 'countdown';
 
-    // inclinación suave al usar los propulsores laterales
     const rollTarget = flying ? (s.left ? 0.045 : 0) - (s.right ? 0.045 : 0) - s.vx * 0.0006 : 0;
     roll += (rollTarget - roll) * Math.min(1, s.dt * 3);
 
@@ -317,7 +289,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, cw, ch);
 
-    // ---------- exterior (recortado a la ventana) ----------
     ctx.save();
     windowPath(ctx);
     ctx.clip();
@@ -330,11 +301,9 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     const pad = Math.max(winW, winH) * 0.25;
     if (stars) ctx.drawImage(stars, 0, 0);
     const horizon = oy - F * T;
-    // la Tierra, arriba a la derecha
     const es = Math.min(winW, winH) * 0.1;
     ctx.drawImage(earthImg, wr - winW * 0.16 - cx * 0.004 * dpr, Math.max(wt + es * 0.4, horizon - winH * 0.24), es, es);
 
-    // montañas lejanas
     const span = winW + pad * 2;
     const rh = winH * 0.06;
     ctx.beginPath();
@@ -354,7 +323,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     ctx.fillStyle = mg;
     ctx.fill();
 
-    // suelo
     const gg = ctx.createLinearGradient(0, horizon, 0, wb + pad);
     gg.addColorStop(0, '#4b4a46');
     gg.addColorStop(0.18, '#6b6a65');
@@ -362,7 +330,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     ctx.fillStyle = gg;
     ctx.fillRect(wl - pad, horizon, winW + pad * 2, wb - horizon + pad);
 
-    // rasgos del terreno
     for (const f of features) {
       if (f.kind === 'pebble' && f.gz - cz > 700) continue;
       const p = proj(f.gx, f.gz);
@@ -377,7 +344,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
         ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
         ctx.fill();
       } else if (f.kind === 'crater') {
-        // interior en sombra del lado del Sol y borde iluminado del lado contrario
         ctx.fillStyle = 'rgba(28,28,26,.55)';
         ctx.beginPath();
         ctx.ellipse(p.x - rx * 0.06, p.y, rx, ry, 0, 0, Math.PI * 2);
@@ -395,7 +361,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
         }
       } else if (f.kind === 'rock') {
         const hgt = rx * 0.7;
-        // sombra larga hacia adelante (Sol bajo detrás)
         ctx.fillStyle = 'rgba(20,20,18,.45)';
         ctx.beginPath();
         ctx.ellipse(p.x + rx * 0.3, p.y - ry * 1.6, rx * 0.8, ry * 1.6, 0, 0, Math.PI * 2);
@@ -414,7 +379,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
       }
     }
 
-    // sombra del módulo lunar sobre el suelo (adelante, porque el Sol está detrás)
     if (s.status !== 'crashed') {
       const sz = cz + h / SUN_ELEV;
       const legs = [
@@ -463,7 +427,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
       }
     }
 
-    // zona de alunizaje
     const zoneVisible = s.status !== 'crashed';
     let zoneCenter: { x: number; y: number; d: number } | null = null;
     if (zoneVisible) {
@@ -495,7 +458,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
         ctx.beginPath();
         ctx.ellipse(c0.x, c0.y, m, m * Math.max(0.3, S + h / (c0.dist + 200)), 0, 0, Math.PI * 2);
         ctx.stroke();
-        // etiqueta (sobre el borde lejano), como un marcador del radar
         const far = proj(zc, zw / 2);
         if (far && s.status !== 'landed') {
           const ly = Math.max(horizon + 18 * dpr, far.y - 26 * dpr);
@@ -509,14 +471,12 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
           ctx.fillStyle = 'rgba(103,232,249,.95)';
           ctx.font = `700 ${12 * dpr}px Orbitron, sans-serif`;
           ctx.textAlign = 'left';
-          ctx.fillText('ZONA DE ALUNIZAJE', far.x + 4 * dpr, ly);
+          ctx.fillText(tr('LANDING ZONE', 'ZONA DE ALUNIZAJE'), far.x + 4 * dpr, ly);
         }
       }
     }
 
-    // polvo levantado por el motor cerca del suelo
     const dustK = flying && s.alt < 260 && s.throttle > 0.05 ? s.throttle * (1 - s.alt / 260) : 0;
-    // al tocar el suelo: nube de polvo que sale hacia los lados y se asienta poco a poco
     if (s.status === 'landed' && prevStatus !== 'landed') {
       for (let i = 0; i < 420; i++) {
         const a = Math.PI * (0.02 + Math.random() * 0.96);
@@ -529,7 +489,7 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     if (dustK > 0) {
       const n = Math.round(dustK * 380 * s.dt) + (Math.random() < dustK ? 1 : 0);
       for (let i = 0; i < n; i++) {
-        const a = Math.PI * (0.15 + Math.random() * 0.7); // hacia adelante
+        const a = Math.PI * (0.15 + Math.random() * 0.7);
         const sp = (180 + Math.random() * 320) * (0.6 + dustK);
         dust.push({ gx: cx + Math.cos(a) * 20, gz: cz + Math.sin(a) * 20, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, life: 0.6 + Math.random() * 0.5 });
       }
@@ -541,7 +501,7 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
       d.gx += d.vx * s.dt;
       d.gz += d.vz * s.dt;
       if (s.status === 'landed') {
-        d.vx *= 1 - s.dt * 1.2; // el polvo frena y se asienta
+        d.vx *= 1 - s.dt * 1.2;
         d.vz *= 1 - s.dt * 1.2;
       }
       const p1 = proj(d.gx, d.gz);
@@ -565,7 +525,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     }
     ctx.restore();
 
-    // ---------- mira (fija en el vidrio) ----------
     ctx.save();
     windowPath(ctx);
     ctx.clip();
@@ -591,7 +550,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
     ctx.arc(ox, oy, 7 * dpr, 0, Math.PI * 2);
     ctx.stroke();
 
-    // flechas guía si la zona está fuera de la mira
     if (zoneVisible && flying) {
       const zx = zoneCenter ? zoneCenter.x : zc > cx ? wr + 100 : wl - 100;
       const off = zx - ox;
@@ -613,7 +571,6 @@ export function createCockpit(canvas: HTMLCanvasElement, earthImg: HTMLCanvasEle
       }
     }
 
-    // grietas y estática si choca
     if (s.status === 'crashed') {
       if (!cracks.length) {
         const rand = rng(Math.floor(s.time * 1000));

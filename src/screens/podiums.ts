@@ -1,4 +1,3 @@
-/** PODIOS: 4 robots en 4 podios (cada uno en su cuarto de pantalla). Hover = foco + giro. */
 import type { ScreenFactory } from '../router';
 import { ROBOTS, ROBOT_ORDER } from '../data/robots';
 import { allLevelsDone, getState, robotComplete } from '../store';
@@ -6,8 +5,8 @@ import { onResizeStage } from '../three/stage';
 import { getWorld } from './world';
 import type { World } from './world';
 import { esc } from '../ui/modal';
+import { tr } from '../i18n';
 
-/** Construye la capa DOM de columnas (también la usa la pantalla final). */
 export function buildPodiumLayer(root: HTMLElement): { layer: HTMLElement; cols: HTMLElement[] } {
   const layer = document.createElement('div');
   layer.className = 'podiums';
@@ -19,19 +18,19 @@ export function buildPodiumLayer(root: HTMLElement): { layer: HTMLElement; cols:
     col.dataset.robot = id;
     col.tabIndex = 0;
     col.setAttribute('role', 'button');
-    col.setAttribute('aria-label', `Descubrir ${d.name}`);
+    col.setAttribute('aria-label', tr(`Discover ${d.name}`, `Descubrir ${d.name}`));
     Object.assign(col.style, {
       position: 'absolute',
       top: '0',
-      left: `${i * 25}%`,
-      width: '25%',
+      left: `${(i * 100) / ROBOT_ORDER.length}%`,
+      width: `${100 / ROBOT_ORDER.length}%`,
       height: '100%',
       cursor: 'pointer',
     });
     col.innerHTML = `
       <div class="podium__label" style="position:absolute;left:0;right:0;text-align:center">
         <div class="podium__name">${esc(d.name)}</div>
-        <div class="podium__discover">DESCUBRIR</div>
+        <div class="podium__discover">${tr('DISCOVER', 'DESCUBRIR')}</div>
       </div>`;
     layer.appendChild(col);
     return col;
@@ -40,7 +39,6 @@ export function buildPodiumLayer(root: HTMLElement): { layer: HTMLElement; cols:
   return { layer, cols };
 }
 
-/** Coloca las etiquetas justo debajo de la base 3D de cada podio. */
 export function positionLabels(world: World, cols: HTMLElement[]): void {
   cols.forEach((col, i) => {
     const p = world.toScreen(world.podiumBase(i));
@@ -58,7 +56,7 @@ const podiums: ScreenFactory = ({ root, go }) => {
   const { cols } = buildPodiumLayer(root);
   const hint = document.createElement('p');
   hint.className = 'hud-hint';
-  hint.textContent = 'Pasa el cursor sobre un podio y haz click para descubrir su robot';
+  hint.textContent = tr('Hover over a podium and click to discover its robot', 'Pasa el cursor sobre un podio y haz click para descubrir su robot');
   root.appendChild(hint);
 
   const s = getState();
@@ -66,14 +64,14 @@ const podiums: ScreenFactory = ({ root, go }) => {
     const sl = world.slots[i];
     sl.done = robotComplete(sl.id);
     col.classList.toggle('podium--done', sl.done);
-    if (sl.done) col.querySelector('.podium__discover')!.textContent = 'COMPLETADO · VOLVER A VER';
+    if (sl.done) col.querySelector('.podium__discover')!.textContent = tr('COMPLETED · SEE AGAIN', 'COMPLETADO · VOLVER A VER');
   });
 
   if (s.finalDone) {
     const btn = document.createElement('button');
     btn.className = 'btn btn--ghost';
     btn.type = 'button';
-    btn.textContent = 'Ver certificado';
+    btn.textContent = tr('View certificate', 'Ver certificado');
     Object.assign(btn.style, { position: 'absolute', right: '24px', bottom: '24px', zIndex: '2' });
     btn.addEventListener('click', () => go('certificate'));
     root.appendChild(btn);
@@ -96,7 +94,6 @@ const podiums: ScreenFactory = ({ root, go }) => {
     const enter = () => setHover(i, true);
     const leave = () => setHover(i, false);
     const down = (e: PointerEvent) => {
-      // en táctil: primer toque = foco, segundo = despegar
       if (e.pointerType === 'touch' && world.slots[i].hoverTarget < 1) {
         cols.forEach((_, j) => setHover(j, j === i));
         e.preventDefault();
@@ -138,7 +135,6 @@ const podiums: ScreenFactory = ({ root, go }) => {
   positionLabels(world, cols);
   offs.push(onResizeStage(() => positionLabels(world, cols)));
 
-  // Nivel extra: 16/16 y aún no hecho → pantalla final
   if (allLevelsDone() && !s.finalDone) {
     launched = true;
     window.setTimeout(() => go('final'), 50);

@@ -1,11 +1,3 @@
-/**
- * Texturas lunares procedurales (sin imágenes externas):
- * - rng / fbm: generador aleatorio con semilla y ruido fractal 2D.
- * - createMoonMaps: mapa de color + mapa de relieve (equirectangular) con mares,
- *   tierras altas, cráteres con borde elevado y rayos de eyección.
- */
-
-/** Generador pseudoaleatorio con semilla (mulberry32). */
 export function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -17,7 +9,6 @@ export function rng(seed: number): () => number {
   };
 }
 
-/** Ruido de valor 2D. `periodX` > 0 lo hace repetirse horizontalmente (sin costuras). */
 export function makeNoise(seed = 1): (x: number, y: number, periodX?: number) => number {
   const r = rng(seed);
   const table = new Float32Array(256 * 256);
@@ -43,7 +34,6 @@ export function makeNoise(seed = 1): (x: number, y: number, periodX?: number) =>
   };
 }
 
-/** Ruido fractal (fbm) en [0,1] aprox. */
 export function fbm(
   noise: (x: number, y: number, p?: number) => number,
   x: number,
@@ -69,14 +59,12 @@ export interface MoonMaps {
   bump: HTMLCanvasElement;
 }
 
-/** Crea los mapas de la Luna (proporción 2:1). Tarda ~100-200 ms en un PC normal. */
 export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
   const W = width;
   const H = width / 2;
   const noise = makeNoise(seed);
   const rand = rng(seed * 31 + 5);
 
-  // ---- 1) base a baja resolución: mares (zonas oscuras) + variación de tierras altas ----
   const lw = 256;
   const lh = 128;
   const low = document.createElement('canvas');
@@ -89,7 +77,7 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
   lowBump.height = lh;
   const lbctx = lowBump.getContext('2d')!;
   const lowBumpImg = lbctx.createImageData(lw, lh);
-  const PX = 6; // frecuencia horizontal (periodo de repetición)
+  const PX = 6;
   const mariaVals = new Float32Array(lw * lh);
   const hlVals = new Float32Array(lw * lh);
   for (let y = 0; y < lh; y++) {
@@ -100,13 +88,12 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
       hlVals[y * lw + x] = fbm(noise, u * 2.2 + 40, v * 2.2 + 7, 5, PX * 2.2);
     }
   }
-  // umbrales por percentil: ~30 % de la superficie son "mares" oscuros
   const sorted = Float32Array.from(mariaVals).sort();
   const pLow = sorted[Math.floor(sorted.length * 0.18)];
   const pHigh = sorted[Math.floor(sorted.length * 0.32)];
   for (let k = 0; k < lw * lh; k++) {
     const t = Math.max(0, Math.min(1, (pHigh - mariaVals[k]) / (pHigh - pLow)));
-    const m = t * t * (3 - 2 * t); // 1 = mar
+    const m = t * t * (3 - 2 * t);
     const hl = hlVals[k];
     const lum = 178 + (hl - 0.5) * 80 - m * 88;
     const i = k * 4;
@@ -135,7 +122,6 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
   bctx.imageSmoothingQuality = 'high';
   bctx.drawImage(lowBump, 0, 0, W, H);
 
-  // ---- 2) cráteres (de grandes a pequeños) ----
   const drawWrapped = (x: number, fn: (cx: number) => void) => {
     fn(x);
     if (x < W * 0.1) fn(x + W);
@@ -144,9 +130,8 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
 
   const crater = (x: number, y: number, r: number, young: boolean) => {
     const lat = ((y / H) - 0.5) * Math.PI;
-    const sx = 1 / Math.max(0.25, Math.cos(lat)); // estirar hacia los polos (equirectangular)
+    const sx = 1 / Math.max(0.25, Math.cos(lat));
     drawWrapped(x, (cx) => {
-      // relieve: cuenco hundido + borde elevado
       bctx.save();
       bctx.translate(cx, y);
       bctx.scale(sx, 1);
@@ -161,7 +146,6 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
       bctx.arc(0, 0, r * 1.35, 0, Math.PI * 2);
       bctx.fill();
       if (r > 10) {
-        // pico central
         const p = bctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.18);
         p.addColorStop(0, 'rgba(200,200,200,0.8)');
         p.addColorStop(1, 'rgba(60,60,60,0)');
@@ -172,7 +156,6 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
       }
       bctx.restore();
 
-      // color: interior algo más oscuro, borde y eyección más claros
       cctx.save();
       cctx.translate(cx, y);
       cctx.scale(sx, 1);
@@ -185,7 +168,6 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
       cctx.arc(0, 0, r * 2, 0, Math.PI * 2);
       cctx.fill();
       if (young) {
-        // rayos de eyección (como Tycho o Copérnico)
         cctx.strokeStyle = 'rgba(240,240,235,0.05)';
         const rays = 18 + Math.floor(rand() * 10);
         for (let k = 0; k < rays; k++) {
@@ -202,13 +184,11 @@ export function createMoonMaps(width = 1024, seed = 7): MoonMaps {
     });
   };
 
-  // distribución tipo ley de potencias: pocos grandes, muchísimos pequeños
   const big = Math.round(W / 90);
   for (let i = 0; i < big; i++) crater(rand() * W, H * (0.12 + rand() * 0.76), W * (0.01 + rand() * 0.016), i < 2);
   for (let i = 0; i < W / 8; i++) crater(rand() * W, H * (0.05 + rand() * 0.9), W * (0.003 + Math.pow(rand(), 2) * 0.006), false);
   for (let i = 0; i < W * 1.5; i++) crater(rand() * W, H * (0.03 + rand() * 0.94), W * (0.0006 + Math.pow(rand(), 2) * 0.002), false);
 
-  // ---- 3) grano fino (regolito) ----
   const grain = (ctx: CanvasRenderingContext2D, amount: number) => {
     const img = ctx.getImageData(0, 0, W, H);
     const d = img.data;

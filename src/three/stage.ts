@@ -1,9 +1,3 @@
-/**
- * Escenario 3D único: un solo WebGLRenderer reutilizado por todas las pantallas 3D.
- * - setPixelRatio(min(dpr, 2)), antialias.
- * - El loop de render solo corre mientras el escenario está visible (showStage/hideStage).
- * - Las pantallas registran callbacks por frame con `onFrame` y fijan escena/cámara con `setView`.
- */
 import { PerspectiveCamera, Scene, SRGBColorSpace, ACESFilmicToneMapping, WebGLRenderer } from 'three';
 import type { Camera } from 'three';
 
@@ -84,7 +78,6 @@ export function size(): { w: number; h: number } {
   return { w: window.innerWidth, h: window.innerHeight };
 }
 
-/** Muestra el canvas y arranca el loop. */
 export function showStage(): void {
   const r = ensure();
   r.domElement.style.opacity = '1';
@@ -95,11 +88,9 @@ export function showStage(): void {
   }
 }
 
-/** Oculta el canvas (fade) y pausa el loop. */
 export function hideStage(): void {
   if (!renderer) return;
   renderer.domElement.style.opacity = '0';
-  // dejamos correr el loop durante el fade para que no se congele de golpe
   window.setTimeout(() => {
     if (renderer && renderer.domElement.style.opacity === '0') {
       running = false;
@@ -135,13 +126,11 @@ export function onResizeStage(fn: ResizeFn): () => void {
   return () => resizeFns.delete(fn);
 }
 
-/** Registra limpieza de contenido persistente (p.ej. el mundo de podios). */
 export function registerDisposer(fn: () => void): () => void {
   disposers.add(fn);
   return () => disposers.delete(fn);
 }
 
-/** Libera todo el contenido 3D persistente (al volver a Home / Reiniciar). */
 export function disposeContent(): void {
   disposers.forEach((d) => {
     try {

@@ -1,13 +1,9 @@
-/* NovaCore – Misión Robots · hoja de estilos principal */
 @import './tokens.css';
 @import './base.css';
 @import './retro.css';
 @import './components.css';
 @import './screens.css';
 
-/* ============================================================
-   Responsive
-   ============================================================ */
 @media (max-width: 900px) {
   .podium__discover {
     letter-spacing: 0.18em;
@@ -98,9 +94,6 @@
   }
 }
 
-/* ============================================================
-   Movimiento reducido
-   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -126,7 +119,6 @@
     animation: none !important;
   }
 
-  /* el parpadeo de celebración se reduce a un único resaltado estático */
   .podium--celebrate {
     animation: none !important;
     box-shadow: inset 0 0 0 2px #fff, inset 0 0 80px rgba(255, 255, 255, 0.35);

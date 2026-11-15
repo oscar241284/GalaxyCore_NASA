@@ -1,9 +1,6 @@
-/**
- * Interfaz común de los niveles 3D de Opportunity: estructura HTML sobre el canvas WebGL
- * (tarjetas de datos, mensaje del centro de control, joystick, botones, avisos y paneles).
- */
 import { injectKit, say as kitSay } from '../lkKit';
 import { injectOpCss } from './world';
+import { tr } from '../../i18n';
 
 export interface OpUi {
   wrap: HTMLElement;
@@ -26,7 +23,7 @@ export function mountOp(root: HTMLElement, task: string, opts: { joystick?: bool
       <div class="op__canvas" data-canvas></div>
       <div class="op__hud" data-hud><div class="op__card op__task">${task}</div><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end" data-cards></div></div>
       <div class="op__center" data-center></div>
-      ${opts.joystick === false ? '' : '<div class="opj" data-joy aria-label="Joystick: arrastra para manejar (o usa las flechas del teclado)"></div>'}
+      ${opts.joystick === false ? '' : `<div class="opj" data-joy aria-label="${tr('Joystick: drag to drive (or use the arrow keys)', 'Joystick: arrastra para manejar (o usa las flechas del teclado)')}"></div>`}
       <div class="op__btns" data-btns></div>
       <p class="lk-say op__say" data-say></p>
     </div>`;
@@ -76,11 +73,10 @@ export function mountOp(root: HTMLElement, task: string, opts: { joystick?: bool
   };
 }
 
-/** Mensaje si el equipo no tiene WebGL. */
 export function noWebGL(root: HTMLElement, win: () => void): void {
   root.innerHTML = `<div class="op lk"><div class="op__panel"><div>
-    <h3 style="margin:0 0 8px;font-family:var(--font-ui)">Este equipo no puede mostrar 3D</h3>
-    <p style="margin:0 0 14px;line-height:1.5">Prueba en otro navegador (Chrome o Edge actualizados) o activa la aceleración por hardware.</p>
-    <button type="button" class="lk-btn lk-btn--go" data-end>Continuar</button></div></div></div>`;
+    <h3 style="margin:0 0 8px;font-family:var(--font-ui)">${tr('This device cannot display 3D', 'Este equipo no puede mostrar 3D')}</h3>
+    <p style="margin:0 0 14px;line-height:1.5">${tr('Try another browser (an up-to-date Chrome or Edge) or turn on hardware acceleration.', 'Prueba en otro navegador (Chrome o Edge actualizados) o activa la aceleración por hardware.')}</p>
+    <button type="button" class="lk-btn lk-btn--go" data-end>${tr('Continue', 'Continuar')}</button></div></div></div>`;
   root.querySelector('[data-end]')!.addEventListener('click', win);
 }

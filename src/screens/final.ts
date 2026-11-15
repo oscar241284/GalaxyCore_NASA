@@ -1,23 +1,15 @@
-/**
- * NIVEL EXTRA: anuncio → celebración (podios parpadean en blanco) → podios al 80 % arriba →
- * 8 piedras (STONES barajadas) que se arrastran a un podio → Verificar → certificado.
- *
- * Aspecto de las piedras: para NO delatar la respuesta, el tipo de roca (lunar/marciana)
- * NO depende del robot correcto sino de la posición en la bandeja barajada (alterna
- * luna/marte) con un seed propio por piedra. Así siempre hay 4 de cada aspecto y el
- * jugador debe razonar con el texto, no con el color.
- */
 import gsap from 'gsap';
 import type { ScreenFactory } from '../router';
 import { dur, reducedMotion } from '../router';
 import { ROBOTS, ROBOT_ORDER, STONES } from '../data/robots';
 import type { Body, RobotId, StoneFact } from '../types';
-import { setFinalResult } from '../store';
+import { setFinalResult, TOTAL_LEVELS } from '../store';
 import { onResizeStage } from '../three/stage';
 import { stoneSVG } from '../ui/stoneArt';
 import { esc, openModal } from '../ui/modal';
 import { getWorld, COMPACT_REGION } from './world';
 import { buildPodiumLayer, positionLabels } from './podiums';
+import { tr } from '../i18n';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice();
@@ -82,18 +74,16 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
   };
   offs.push(onResizeStage(relayout));
 
-  // ---------- 1) anuncio ----------
   openModal({
-    title: '¡Nivel extra desbloqueado!',
-    body: 'Completaste las 16 pruebas. Última misión: clasifica cada piedra de muestra arrastrándola al robot que la estudió.',
+    title: tr('Bonus level unlocked!', '¡Nivel extra desbloqueado!'),
+    body: tr(`You completed all ${TOTAL_LEVELS} challenges. Final mission: sort each sample rock by dragging it to the robot that studied it.`, `Completaste las ${TOTAL_LEVELS} pruebas. Última misión: clasifica cada piedra de muestra arrastrándola al robot que la estudió.`),
     dismissable: false,
-    actions: [{ label: 'Comenzar', variant: 'primary', onClick: () => celebrate() }],
+    actions: [{ label: tr('Start', 'Comenzar'), variant: 'primary', onClick: () => celebrate() }],
   });
 
-  // ---------- 2) celebración + compactar ----------
   const celebrate = () => {
     cols.forEach((c) => c.classList.add('podium--celebrate'));
-    world.mode = 'launch'; // el loop del mundo deja de controlar las luces durante el parpadeo
+    world.mode = 'launch';
     const flick = { k: 0 };
     const tl = gsap.timeline({ onComplete: compact });
     tl.to(flick, {
@@ -120,8 +110,6 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
     world.mode = 'final';
     for (const sl of world.slots) sl.spot.color.set(0xfff1d6);
     layer.classList.add('podiums--compact');
-    // el 80 % se aplica en la escena 3D (world.layout); la capa DOM no se escala para
-    // que cada columna siga siendo exactamente un cuarto de pantalla (zona de drop)
     layer.style.transform = 'none';
     cols.forEach((c) => (c.style.height = `${COMPACT_REGION * 100}%`));
     const tl = gsap.timeline({ onComplete: showStones });
@@ -135,13 +123,12 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
       },
     });
     for (const sl of world.slots) {
-      sl.hoverTarget = 0.45; // luz suave permanente
+      sl.hoverTarget = 0.45;
       sl.celebrate.intensity = 0;
     }
     timeline.push(tl);
   };
 
-  // ---------- 3) piedras ----------
   const showStones = () => {
     relayout();
     stonesWrap = document.createElement('div');
@@ -156,7 +143,7 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
       alignContent: 'flex-start',
       overflowY: 'auto',
     });
-    stonesWrap.innerHTML = `<p class="hud-hint" style="position:static;transform:none;margin:8px auto 12px;width:fit-content">Arrastra cada piedra al robot que corresponde</p>`;
+    stonesWrap.innerHTML = `<p class="hud-hint" style="position:static;transform:none;margin:8px auto 12px;width:fit-content">${tr('Drag each rock to the matching robot', 'Arrastra cada piedra al robot que corresponde')}</p>`;
     const tray = document.createElement('div');
     tray.className = 'stones__tray';
     Object.assign(tray.style, { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px', width: '100%' });
@@ -164,7 +151,7 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
     const actions = document.createElement('div');
     actions.className = 'stones__actions';
     Object.assign(actions.style, { display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '8px', width: '100%' });
-    actions.innerHTML = `<button class="btn btn--primary" type="button" data-verify disabled>Verificar</button>`;
+    actions.innerHTML = `<button class="btn btn--primary" type="button" data-verify disabled>${tr('Check', 'Verificar')}</button>`;
     stonesWrap.appendChild(actions);
     root.appendChild(stonesWrap);
 
@@ -176,7 +163,7 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
       el.className = 'stone';
       el.tabIndex = 0;
       el.setAttribute('role', 'button');
-      el.setAttribute('aria-label', `Piedra: ${fact.text}`);
+      el.setAttribute('aria-label', `${tr('Rock', 'Piedra')}: ${fact.text}`);
       el.innerHTML = `${stoneSVG(body, seed)}<span class="stone__text">${esc(fact.text)}</span><span class="stone__answer" hidden></span>`;
       Object.assign(el.style, { touchAction: 'none', userSelect: 'none' });
       tray.appendChild(el);
@@ -193,7 +180,6 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
       ease: 'back.out(1.5)',
       clearProps: 'transform,opacity',
     });
-    // respaldo para equipos muy lentos (lagSmoothing de GSAP): nunca dejar piedras invisibles
     window.setTimeout(() => intro.progress(1), 2500);
     actions.querySelector('[data-verify]')!.addEventListener('click', verify);
   };
@@ -201,7 +187,7 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
   const colAt = (x: number, y: number): number => {
     const h = window.innerHeight * COMPACT_REGION;
     if (y > h || y < 0) return -1;
-    return Math.max(0, Math.min(3, Math.floor((x / window.innerWidth) * 4)));
+    return Math.max(0, Math.min(ROBOT_ORDER.length - 1, Math.floor((x / window.innerWidth) * ROBOT_ORDER.length)));
   };
 
   const updateVerify = () => {
@@ -218,14 +204,13 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
     } else {
       st.placedIn = ROBOT_ORDER[col];
       st.el.classList.add('stone--placed');
-      st.el.style.width = 'min(112px, 11vw)'; // compacta para caber 2 por columna
+      st.el.style.width = 'min(112px, 11vw)';
       cols[col].querySelector('.podium__stones')!.appendChild(st.el);
     }
     updateVerify();
   };
 
   const attachKeyboard = (st: StoneState) => {
-    // accesibilidad: Enter/Espacio cicla entre podios (1→4→bandeja)
     st.el.addEventListener('keydown', (e) => {
       if (verified || (e.key !== 'Enter' && e.key !== ' ')) return;
       e.preventDefault();
@@ -280,7 +265,6 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
     el.addEventListener('pointercancel', up);
   };
 
-  // ---------- 4) verificar ----------
   const verify = () => {
     if (verified || stones.some((s) => !s.placedIn)) return;
     verified = true;
@@ -293,18 +277,17 @@ const finalScreen: ScreenFactory = ({ root, go }) => {
         if (!ok) {
           const ans = s.el.querySelector<HTMLElement>('.stone__answer')!;
           ans.hidden = false;
-          ans.textContent = `Correcto: ${ROBOTS[s.fact.robot].name}`;
+          ans.textContent = `${tr('Correct', 'Correcto')}: ${ROBOTS[s.fact.robot].name}`;
         }
       }, dur(0.12) * 1000 * i);
     });
     setFinalResult(correct);
-    // deja ver la etiqueta "Correcto: …" bajo las piedras de los podios
     if (stonesWrap) stonesWrap.style.top = `${(COMPACT_REGION + 0.06) * 100}%`;
     const actions = root.querySelector<HTMLElement>('.stones__actions')!;
     window.setTimeout(() => {
       actions.innerHTML = `
-        <p class="hud-hint" style="position:static;transform:none;width:fit-content;animation:none">Acertaste ${correct} de ${stones.length} piedras.</p>
-        <button class="btn btn--primary" type="button" data-cert>Ver certificado</button>`;
+        <p class="hud-hint" style="position:static;transform:none;width:fit-content;animation:none">${tr(`You got ${correct} of ${stones.length} rocks right.`, `Acertaste ${correct} de ${stones.length} piedras.`)}</p>
+        <button class="btn btn--primary" type="button" data-cert>${tr('View certificate', 'Ver certificado')}</button>`;
       actions.style.flexWrap = 'wrap';
       actions.querySelector('[data-cert]')!.addEventListener('click', () => go('certificate'));
     }, dur(0.12) * 1000 * stones.length + 300);

@@ -1,8 +1,3 @@
-/* ============================================================
-   Pantallas: nombre, podios, mapa, final (piedras), certificado
-   ============================================================ */
-
-/* ---------- Nombre ---------- */
 .name-screen {
   min-height: 100%;
   display: flex;
@@ -64,7 +59,6 @@
   font-size: 16px;
 }
 
-/* ---------- Podios (capa DOM sobre el canvas 3D) ---------- */
 .podiums {
   transform-origin: 50% 0;
   transition: transform 0.9s var(--ease-out);
@@ -88,7 +82,6 @@
 }
 
 .podium::before {
-  /* haz de luz que cae sobre el podio al enfocarlo */
   content: '';
   position: absolute;
   inset: 0;
@@ -178,7 +171,6 @@
   letter-spacing: 0.16em;
 }
 
-/* parpadeo blanco al completar */
 .podium--celebrate {
   animation: podium-flash 0.42s ease-in-out 4;
 }
@@ -201,7 +193,6 @@
   }
 }
 
-/* ---------- Mapa (SVG a pantalla completa, preserveAspectRatio slice) ---------- */
 .map-screen {
   position: relative;
   height: 100%;
@@ -227,7 +218,6 @@
 }
 
 .map-screen::after {
-  /* degradados para que el título, el header y la pista se lean sobre el terreno */
   content: '';
   position: absolute;
   inset: 0;
@@ -295,7 +285,6 @@
   text-shadow: 0 0 8px var(--holo);
 }
 
-/* ruta punteada: negra en la Luna, blanca en Marte */
 .map__route {
   fill: none;
   stroke-width: 5;
@@ -321,15 +310,10 @@
   }
 }
 
-/* robot que recorre la ruta */
 .map__robot {
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7));
 }
 
-/* ---------- Nodos de nivel ----------
-   Estructura (SVG): g.level-node > g.level-node__inner >
-   circle.level-node__halo + circle.level-node__circle + text.level-node__num + text.level-node__label
-   (opcional) text.level-node__check — se muestra solo en --done y oculta el número. */
 .level-node {
   cursor: pointer;
   outline: none;
@@ -388,7 +372,6 @@
   pointer-events: none;
 }
 
-/* hover / foco → luminoso con brillo animado */
 .level-node:hover .level-node__circle,
 .level-node:focus-visible .level-node__circle {
   fill: #7c3aed;
@@ -432,7 +415,6 @@
   }
 }
 
-/* completado: verde con check */
 .level-node--done .level-node__circle {
   fill: #059669;
   stroke: #a7f3d0;
@@ -472,7 +454,6 @@
   }
 }
 
-/* extras opcionales */
 .level-node--locked {
   opacity: 0.45;
   filter: grayscale(0.7);
@@ -483,7 +464,6 @@
   animation: node-glow-svg 1.8s ease-in-out infinite;
 }
 
-/* ---------- Final: piedras arrastrables ---------- */
 .stones {
   display: flex;
   flex-direction: column;
@@ -626,7 +606,6 @@
     inset 0 0 60px rgba(168, 85, 247, 0.45) !important;
 }
 
-/* ---------- Certificado ---------- */
 .certificate {
   position: relative;
   width: min(820px, calc(100% - 32px));
@@ -911,7 +890,6 @@
   }
 }
 
-/* ---------- Piedras: piezas internas ---------- */
 .stone__text {
   position: relative;
   display: -webkit-box;

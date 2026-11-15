@@ -1,40 +1,24 @@
-/**
- * MISIÓN 1 · Alunizaje del módulo lunar (Apolo).
- *
- * Simulación 2D con gravedad lunar real (1,62 m/s²) y estética realista:
- * - Terreno con regolito, cráteres, rocas y sombras largas por el Sol rasante.
- * - Montañas lejanas con parallax, cielo negro con estrellas y la Tierra.
- * - Módulo lunar Apolo detallado (etapa de descenso dorada, patas, escalera,
- *   ventanas, antenas, propulsores RCS), su sombra en el suelo, chorro del motor
- *   y polvo levantado cerca de la superficie.
- * - Cámara que se acerca al descender, HUD estilo computadora Apolo, avisos de
- *   Houston, alarma 1202, sonido (Web Audio) y controles en pantalla que se iluminan.
- * - 3 niveles de dificultad y resultado con estrellas.
- *
- * VISTA DE CABINA: la pantalla principal es la ventana del módulo (primera persona, ver
- * cockpitView.ts). La vista exterior 2D se muestra en el monitor "Cámara de alunizaje · CH. 4".
- */
 import type { GameContext } from './index';
 import { fbm, makeNoise, rng } from '../ui/moonTexture';
 import { createCockpit } from './cockpitView';
+import { tr } from '../i18n';
 
-// ---------------------------------------------------------------- constantes
-const H = 560; // alto del mundo (unidades). El ancho se adapta a la pantalla.
-const PX_PER_M = 10; // unidades por metro
-const GRAVITY = 16.2; // 1,62 m/s² × 10
+const H = 560;
+const PX_PER_M = 10;
+const GRAVITY = 16.2;
 const THRUST = 40;
 const SIDE = 16;
-const FUEL_MAIN = 7; // consumo (%/s) a máxima potencia
+const FUEL_MAIN = 7;
 const FUEL_SIDE = 2.5;
-const LEG_Y = 31; // del centro del módulo a la base de las patas
-const PAD_X = 32; // del centro a cada pata lateral
-const SUN = { x: -0.86, y: -0.5 }; // dirección hacia el Sol (izquierda, bajo)
+const LEG_Y = 31;
+const PAD_X = 32;
+const SUN = { x: -0.86, y: -0.5 };
 
 type Difficulty = 'cadete' | 'piloto' | 'comandante';
 const LEVELS: Record<Difficulty, { label: string; desc: string; zone: number; fuel: number; vy: number; vx: number; drift: number }> = {
-  cadete: { label: 'Cadete', desc: 'Zona amplia y mucho combustible', zone: 170, fuel: 140, vy: 35, vx: 25, drift: 10 },
-  piloto: { label: 'Piloto', desc: 'Como un astronauta de verdad', zone: 125, fuel: 100, vy: 30, vx: 20, drift: 25 },
-  comandante: { label: 'Comandante', desc: 'Zona estrecha, poco combustible', zone: 95, fuel: 75, vy: 22, vx: 15, drift: 45 },
+  cadete: { label: tr('Cadet', 'Cadete'), desc: tr('Wide zone and lots of fuel', 'Zona amplia y mucho combustible'), zone: 170, fuel: 140, vy: 35, vx: 25, drift: 10 },
+  piloto: { label: tr('Pilot', 'Piloto'), desc: tr('Like a real astronaut', 'Como un astronauta de verdad'), zone: 125, fuel: 100, vy: 30, vx: 20, drift: 25 },
+  comandante: { label: tr('Commander', 'Comandante'), desc: tr('Narrow zone, little fuel', 'Zona estrecha, poco combustible'), zone: 95, fuel: 75, vy: 22, vx: 15, drift: 45 },
 };
 
 type Status = 'brief' | 'countdown' | 'flying' | 'landed' | 'crashed';
@@ -53,7 +37,6 @@ interface Particle {
   vr: number;
 }
 
-// ---------------------------------------------------------------- estilos
 const CSS = `
 .lm { --side: clamp(260px, min(30vw, (100cqh - 330px) * 1.3), 460px); container-type: size; position: absolute; inset: 0; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
 .lm canvas { display: block; width: 100%; height: 100%; }
@@ -232,7 +215,6 @@ function injectStyles(): void {
   document.head.appendChild(s);
 }
 
-// ---------------------------------------------------------------- sonido
 class Sound {
   ctx: AudioContext | null = null;
   master: GainNode | null = null;
@@ -244,7 +226,6 @@ class Sound {
     try {
       this.muted = localStorage.getItem('novacore:sound') === 'off';
     } catch {
-      /* sin almacenamiento */
     }
   }
 
@@ -262,7 +243,6 @@ class Sound {
     this.master.connect(ctx.destination);
     const noise = this.noiseBuffer(2);
 
-    // motor principal: ruido grave filtrado
     const src = ctx.createBufferSource();
     src.buffer = noise;
     src.loop = true;
@@ -275,7 +255,6 @@ class Sound {
     src.connect(lp).connect(this.engine).connect(this.master);
     src.start();
 
-    // propulsores RCS: siseo agudo
     const src2 = ctx.createBufferSource();
     src2.buffer = noise;
     src2.loop = true;
@@ -319,7 +298,6 @@ class Sound {
     o.stop(t + dur + 0.02);
   }
 
-  /** Tono "Quindar" de la NASA antes de cada mensaje de Houston. */
   quindar(): void {
     this.tone(2525, 0.25, 'sine', 0.05);
   }
@@ -362,7 +340,6 @@ class Sound {
     try {
       localStorage.setItem('novacore:sound', this.muted ? 'off' : 'on');
     } catch {
-      /* sin almacenamiento */
     }
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.8, this.ctx.currentTime, 0.05);
     return this.muted;
@@ -374,11 +351,9 @@ class Sound {
   }
 }
 
-// ---------------------------------------------------------------- módulo lunar (dibujo)
-const LM_RES = 4; // resolución del sprite pre-renderizado
-const LM_BOX = { x: -44, y: -48, w: 88, h: 88 }; // caja en unidades del mundo
+const LM_RES = 4;
+const LM_BOX = { x: -44, y: -48, w: 88, h: 88 };
 
-/** Dibuja el módulo lunar Apolo (vista frontal), centro = etapa de descenso. */
 function drawLM(ctx: CanvasRenderingContext2D): void {
   const lit = (x0: number, x1: number, light: string, mid: string, dark: string) => {
     const g = ctx.createLinearGradient(x0, 0, x1, 0);
@@ -405,13 +380,11 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
     ctx.fill();
   };
 
-  // ---- patas laterales (detrás) ----
   for (const s of [-1, 1]) {
     const c = s < 0 ? '#d7d9de' : '#7c808a';
-    line([s * 20, -1, s * 31, 26], 2.6, c); // puntal principal
-    line([s * 21, 11, s * 30, 23], 1.3, s < 0 ? '#b9bcc4' : '#6a6e78'); // puntal secundario
+    line([s * 20, -1, s * 31, 26], 2.6, c);
+    line([s * 21, 11, s * 30, 23], 1.3, s < 0 ? '#b9bcc4' : '#6a6e78');
     line([s * 22, 4, s * 29, 19], 1, s < 0 ? '#a9adb6' : '#5d616b');
-    // amortiguador y pie
     line([s * 31, 23, s * 32, 28], 1.8, s < 0 ? '#f1f2f4' : '#9a9ea8');
     ctx.fillStyle = s < 0 ? '#e7e8eb' : '#8d919b';
     ctx.beginPath();
@@ -423,7 +396,6 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
     ctx.fill();
   }
 
-  // ---- tobera del motor de descenso ----
   poly([-6, 12, 6, 12, 9.5, 21, -9.5, 21], lit(-9.5, 9.5, '#6e6a63', '#3a3733', '#1b1a18'));
   ctx.strokeStyle = 'rgba(255,255,255,.18)';
   ctx.lineWidth = 0.6;
@@ -432,7 +404,6 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
   ctx.lineTo(9.5, 21);
   ctx.stroke();
 
-  // ---- etapa de descenso (lámina dorada) ----
   const body = [-23, -2, -19, -6, 19, -6, 23, -2, 23, 10, 19, 13, -19, 13, -23, 10];
   poly(body, lit(-23, 23, '#ffe29a', '#d9a441', '#6b4a12'));
   ctx.save();
@@ -441,7 +412,6 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
   for (let i = 2; i < body.length; i += 2) ctx.lineTo(body[i], body[i + 1]);
   ctx.closePath();
   ctx.clip();
-  // arrugas de la lámina Kapton
   const r = rng(1969);
   for (let i = 0; i < 70; i++) {
     const x = -23 + r() * 46;
@@ -456,7 +426,6 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
     ctx.closePath();
     ctx.fill();
   }
-  // paneles negros y plateados (cuadrantes)
   ctx.fillStyle = 'rgba(20,18,16,.85)';
   ctx.fillRect(-23, 2, 7, 11);
   ctx.fillRect(16, 2, 7, 11);
@@ -472,11 +441,9 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
   ctx.closePath();
   ctx.stroke();
 
-  // ---- pata delantera con escalera ----
   line([-4, 12, -2, 29], 2.2, '#c8cbd2');
   line([4, 12, 2, 29], 2.2, '#9a9ea8');
   for (let y = 15; y <= 27; y += 3) line([-3.4, y, 3.2, y], 0.9, '#b5b8c0');
-  // porche
   poly([-6, 12, 6, 12, 7, 13.6, -7, 13.6], '#cfd2d8');
   ctx.fillStyle = '#f2f3f5';
   ctx.beginPath();
@@ -487,15 +454,11 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
   ctx.ellipse(-1.2, 30.2, 4.6, 0.9, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ---- etapa de ascenso ----
   const asc = [-20, -6, -21.5, -16, -16, -27, -8, -31.5, 8, -31.5, 16, -27, 21.5, -16, 20, -6];
   poly(asc, lit(-21.5, 21.5, '#f4f5f7', '#b9bdc6', '#4f535c'));
-  // facetas
   poly([-16, -27, -8, -31.5, -6, -24, -13, -20], 'rgba(255,255,255,.18)');
   poly([16, -27, 8, -31.5, 6, -24, 13, -20], 'rgba(0,0,0,.18)');
-  // banda inferior oscura (aislamiento negro)
   poly([-20, -6, 20, -6, 20.6, -10, -20.6, -10], lit(-20, 20, '#3a3c42', '#1d1e22', '#0b0b0d'));
-  // escotilla frontal
   ctx.fillStyle = '#2b2d33';
   ctx.fillRect(-5.5, -15.5, 11, 9);
   ctx.strokeStyle = '#8a8e97';
@@ -503,7 +466,6 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
   ctx.strokeRect(-5.5, -15.5, 11, 9);
   ctx.fillStyle = '#c9ccd3';
   ctx.fillRect(-1, -12, 2, 2);
-  // ventanas triangulares
   for (const s of [-1, 1]) {
     const pts = [s * 13, -24, s * 5, -26.5, s * 5, -17.5];
     const g = ctx.createLinearGradient(s * 13, -26, s * 5, -17);
@@ -521,13 +483,10 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
     ctx.stroke();
     line([s * 10.5, -23.8, s * 7, -25], 0.6, 'rgba(160,200,255,.55)');
   }
-  // túnel de acoplamiento
   poly([-5, -31.5, 5, -31.5, 5, -36, -5, -36], lit(-5, 5, '#e9eaee', '#b0b4bd', '#6a6e78'));
   ctx.fillStyle = '#555963';
   ctx.fillRect(-5.5, -37, 11, 1.4);
 
-  // ---- antenas ----
-  // radar de encuentro (arriba izquierda)
   line([-9, -31, -12, -37], 1, '#c9ccd3');
   ctx.fillStyle = '#e7e8eb';
   ctx.beginPath();
@@ -537,7 +496,6 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
   ctx.beginPath();
   ctx.ellipse(-13, -38.6, 3, 2.2, -0.4, 0, Math.PI * 2);
   ctx.fill();
-  // antena banda S orientable (arriba derecha)
   line([12, -29, 18, -36], 1, '#a9adb6');
   ctx.fillStyle = '#c9ccd3';
   ctx.beginPath();
@@ -547,20 +505,18 @@ function drawLM(ctx: CanvasRenderingContext2D): void {
   ctx.beginPath();
   ctx.ellipse(19.8, -37.7, 2.4, 1.8, 0.5, 0, Math.PI * 2);
   ctx.fill();
-  // antenas VHF
   line([-17, -26, -23, -41], 0.7, '#d7d9de');
   line([17, -26, 24, -42], 0.7, '#8d919b');
 
-  // ---- cuadrantes RCS ----
   for (const s of [-1, 1]) {
     const x = s * 25;
     line([s * 21, -19, x, -19], 1.4, s < 0 ? '#c9ccd3' : '#7c808a');
     ctx.fillStyle = s < 0 ? '#d9dbe0' : '#7f838d';
     ctx.fillRect(x - 2.5, -22, 5, 6);
     ctx.fillStyle = '#2a2c31';
-    ctx.fillRect(x - 1.2, -25, 2.4, 3); // tobera arriba
-    ctx.fillRect(x - 1.2, -16, 2.4, 3); // tobera abajo
-    ctx.fillRect(x + s * 2.5, -20.2, s * 3, 2.4); // tobera lateral
+    ctx.fillRect(x - 1.2, -25, 2.4, 3);
+    ctx.fillRect(x - 1.2, -16, 2.4, 3);
+    ctx.fillRect(x + s * 2.5, -20.2, s * 3, 2.4);
   }
 }
 
@@ -575,7 +531,6 @@ function renderLMSprite(): HTMLCanvasElement {
   return c;
 }
 
-// ---------------------------------------------------------------- Tierra (disco iluminado)
 function renderEarth(size: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = c.height = size;
@@ -592,7 +547,6 @@ function renderEarth(size: number): HTMLCanvasElement {
       const d2 = dx * dx + dy * dy;
       const i = (py * size + px) * 4;
       if (d2 > 1) {
-        // atmósfera
         const a = Math.max(0, 1 - (Math.sqrt(d2) - 1) * 12);
         img.data[i] = 90;
         img.data[i + 1] = 150;
@@ -632,7 +586,6 @@ function renderEarth(size: number): HTMLCanvasElement {
   return c;
 }
 
-// ---------------------------------------------------------------- juego
 export default function lunarLanding({ root, win }: GameContext): () => void {
   injectStyles();
   const sound = new Sound();
@@ -641,9 +594,9 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
 
   root.innerHTML = `
     <div class="lm">
-      <canvas class="ck-view" aria-label="Vista desde la ventana del módulo lunar: centra la zona de alunizaje en la mira"></canvas>
+      <canvas class="ck-view" aria-label="${tr('View from the lunar module window: center the landing zone in the crosshairs', 'Vista desde la ventana del módulo lunar: centra la zona de alunizaje en la mira')}"></canvas>
       <div class="ck-monitor" aria-hidden="true">
-        <span class="ck-monitor__label"><span><b class="ck-long">CÁMARA DE ALUNIZAJE · </b>CH. 4</span><i></i></span>
+        <span class="ck-monitor__label"><span><b class="ck-long">${tr('LANDING CAMERA', 'CÁMARA DE ALUNIZAJE')} · </b>CH. 4</span><i></i></span>
         <div class="ck-monitor__screen"><canvas></canvas></div>
       </div>
       <div class="ck-clock" aria-hidden="true">
@@ -654,32 +607,32 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
           <line data-mm x1="50" y1="50" x2="50" y2="16" stroke="#f3f4f6" stroke-width="3" stroke-linecap="round"/>
           <line data-ss x1="50" y1="56" x2="50" y2="14" stroke="#ef4444" stroke-width="1.5"/>
           <circle cx="50" cy="50" r="3.5" fill="#ef4444"/></svg>
-        <span class="ck-live" data-live><i></i>SEÑAL EN VIVO</span>
+        <span class="ck-live" data-live><i></i>${tr('LIVE SIGNAL', 'SEÑAL EN VIVO')}</span>
       </div>
       <div class="lm-hud" hidden>
         <div class="lm-hud__top"><span>LM · DSKY</span><span data-prog>PROG 64</span></div>
         <div class="lm-hud__grid">
-          <div class="lm-hud__cell"><span>ALTITUD</span><b data-alt>—</b></div>
-          <div class="lm-hud__cell"><span>V. VERT.</span><b data-vy>—</b></div>
-          <div class="lm-hud__cell"><span>V. HORIZ.</span><b data-vx>—</b></div>
-          <div class="lm-hud__cell"><span>TIEMPO</span><b data-time>0:00</b></div>
-          <div class="lm-hud__cell lm-hud__fuel"><span>COMBUSTIBLE <em data-fuelp>100%</em></span><i><s data-fuel></s></i></div>
+          <div class="lm-hud__cell"><span>${tr('ALTITUDE', 'ALTITUD')}</span><b data-alt>—</b></div>
+          <div class="lm-hud__cell"><span>${tr('V. VERT.', 'V. VERT.')}</span><b data-vy>—</b></div>
+          <div class="lm-hud__cell"><span>${tr('V. HORIZ.', 'V. HORIZ.')}</span><b data-vx>—</b></div>
+          <div class="lm-hud__cell"><span>${tr('TIME', 'TIEMPO')}</span><b data-time>0:00</b></div>
+          <div class="lm-hud__cell lm-hud__fuel"><span>${tr('FUEL', 'COMBUSTIBLE')} <em data-fuelp>100%</em></span><i><s data-fuel></s></i></div>
           <div class="lm-hud__zone" data-zone></div>
         </div>
         <div class="lm-lights">
-          <div class="lm-light" data-l-contact>CONTACTO</div>
-          <div class="lm-light" data-l-fuel>COMB. BAJO</div>
-          <div class="lm-light" data-l-alarm>ALARMA</div>
+          <div class="lm-light" data-l-contact>${tr('CONTACT', 'CONTACTO')}</div>
+          <div class="lm-light" data-l-fuel>${tr('LOW FUEL', 'COMB. BAJO')}</div>
+          <div class="lm-light" data-l-alarm>${tr('ALARM', 'ALARMA')}</div>
         </div>
       </div>
       <div class="lm-tools">
-        <button type="button" class="lm-tool" data-mute aria-label="Silenciar sonido"></button>
+        <button type="button" class="lm-tool" data-mute aria-label="${tr('Mute sound', 'Silenciar sonido')}"></button>
       </div>
       <div class="lm-capcom" aria-live="polite"></div>
       <div class="lm-pad disabled">
-        <button type="button" class="lm-key" data-ctl="left" aria-label="Propulsores: mover a la izquierda"><span class="lm-key__icon">◀</span>RCS</button>
-        <button type="button" class="lm-key lm-key--main" data-ctl="up" aria-label="Motor de descenso"><span class="lm-key__icon">▲</span>MOTOR<i class="lm-key__thr"><s></s></i></button>
-        <button type="button" class="lm-key" data-ctl="right" aria-label="Propulsores: mover a la derecha"><span class="lm-key__icon">▶</span>RCS</button>
+        <button type="button" class="lm-key" data-ctl="left" aria-label="${tr('Thrusters: move left', 'Propulsores: mover a la izquierda')}"><span class="lm-key__icon">◀</span>RCS</button>
+        <button type="button" class="lm-key lm-key--main" data-ctl="up" aria-label="${tr('Descent engine', 'Motor de descenso')}"><span class="lm-key__icon">▲</span>${tr('ENGINE', 'MOTOR')}<i class="lm-key__thr"><s></s></i></button>
+        <button type="button" class="lm-key" data-ctl="right" aria-label="${tr('Thrusters: move right', 'Propulsores: mover a la derecha')}"><span class="lm-key__icon">▶</span>RCS</button>
       </div>
       <div class="lm-panel" data-panel></div>
       <div class="lm-count" data-count></div>
@@ -711,7 +664,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
   const muteBtn = $<HTMLButtonElement>('[data-mute]');
   const keyBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-ctl]'));
 
-  // ---------- estado ----------
   let difficulty: Difficulty = 'piloto';
   let cfg = LEVELS[difficulty];
   let status: Status = 'brief';
@@ -728,7 +680,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
   let time = 0;
   let zoneX1 = 0;
   let zoneX2 = 0;
-  let profile: Float32Array = new Float32Array(0); // altura del suelo cada 4 unidades
+  let profile: Float32Array = new Float32Array(0);
   let particles: Particle[] = [];
   let groundCanvas: HTMLCanvasElement | null = null;
   let mountainCanvas: HTMLCanvasElement | null = null;
@@ -739,14 +691,12 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
   const flags = { alarm: false, alarmAt: 0, fuel60: false, fuel30: false, alts: new Set<number>() };
   let alarmUntil = 0;
   let contactUntil = 0;
-  // cámara
   let camZ = 1;
   let camX = 0;
   let camY = H / 2;
 
   const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
 
-  // ---------- terreno ----------
   const STEP = 4;
   const groundAt = (px: number): number => {
     const f = Math.max(0, Math.min(profile.length - 1.001, px / STEP));
@@ -765,12 +715,10 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       const u = (i * STEP) / W;
       profile[i] = H * 0.74 + (fbm(noise, u * 6, 3.3, 5) - 0.5) * 150;
     }
-    // zona de alunizaje (plana, lejos de los bordes)
     const zw = cfg.zone;
     const zc = W * (0.25 + rand() * 0.5);
     zoneX1 = zc - zw / 2;
     zoneX2 = zc + zw / 2;
-    // cráteres en el perfil (fuera de la zona)
     const craters = 5 + Math.floor(rand() * 4);
     for (let k = 0; k < craters; k++) {
       const cw = 40 + rand() * 120;
@@ -786,7 +734,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
         }
       }
     }
-    // aplanar la zona con transición suave
     const i1 = Math.floor(zoneX1 / STEP);
     const i2 = Math.ceil(zoneX2 / STEP);
     let avg = 0;
@@ -818,7 +765,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       g.lineTo(W, H);
       g.closePath();
     };
-    // relleno base: regolito más claro arriba, más oscuro hacia abajo
     path();
     const grad = g.createLinearGradient(0, H * 0.55, 0, H);
     grad.addColorStop(0, '#8d8c87');
@@ -829,7 +775,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     g.save();
     path();
     g.clip();
-    // manchas grandes de albedo
     for (let k = 0; k < 40; k++) {
       const px = rand() * W;
       const py = H * 0.6 + rand() * H * 0.4;
@@ -841,17 +786,15 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       g.fillStyle = rg;
       g.fillRect(px - rr, py - rr * 0.4, rr * 2, rr * 0.8);
     }
-    // cráteres vistos en perspectiva (elipses aplanadas)
     for (let k = 0; k < 70; k++) {
       const px = rand() * W;
       if (px > zoneX1 - 20 && px < zoneX2 + 20 && rand() < 0.85) continue;
       const top = groundAt(px);
       const depthBelow = Math.pow(rand(), 1.6) * (H - top - 10);
       const py = top + 8 + depthBelow;
-      const persp = 0.6 + (depthBelow / (H - top)) * 0.8; // más grandes cuanto más cerca
+      const persp = 0.6 + (depthBelow / (H - top)) * 0.8;
       const rx = (3 + Math.pow(rand(), 2.2) * 26) * persp;
       const ry = rx * (0.22 + (depthBelow / H) * 0.25);
-      // interior: sombra a la izquierda, pared derecha iluminada (Sol desde la izquierda)
       const cg = g.createLinearGradient(px - rx, 0, px + rx, 0);
       cg.addColorStop(0, 'rgba(18,18,17,.75)');
       cg.addColorStop(0.45, 'rgba(45,45,43,.55)');
@@ -861,14 +804,12 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       g.beginPath();
       g.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
       g.fill();
-      // borde
       g.strokeStyle = 'rgba(190,188,180,.35)';
       g.lineWidth = 0.8;
       g.beginPath();
       g.ellipse(px, py - ry * 0.12, rx * 1.08, ry * 1.15, 0, Math.PI, Math.PI * 2);
       g.stroke();
     }
-    // grano fino del regolito
     g.restore();
     const img = g.getImageData(0, 0, c.width, c.height);
     const d = img.data;
@@ -881,7 +822,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     }
     g.putImageData(img, 0, 0);
     g.setTransform(R, 0, 0, R, 0, 0);
-    // rocas con sombras largas hacia la derecha
     for (let k = 0; k < 90; k++) {
       const px = rand() * W;
       if (px > zoneX1 - 10 && px < zoneX2 + 10) continue;
@@ -900,10 +840,9 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       g.ellipse(px, py - s * 0.35, s, s * 0.65, 0, 0, Math.PI * 2);
       g.fill();
     }
-    // borde del horizonte con iluminación según la pendiente
     for (let i = 0; i < profile.length - 1; i++) {
       const dy = profile[i + 1] - profile[i];
-      const facing = -dy / STEP; // > 0: sube hacia la derecha → mira al Sol
+      const facing = -dy / STEP;
       const l = Math.max(0, Math.min(1, 0.5 + facing * 1.6));
       const v = Math.round(90 + l * 140);
       g.strokeStyle = `rgb(${v},${v - 2},${v - 8})`;
@@ -913,7 +852,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       g.lineTo((i + 1) * STEP, profile[i + 1]);
       g.stroke();
     }
-    // textura sutil a lo largo de la superficie
     for (let i = 0; i < W; i += 2) {
       const n = fbm(noise, i * 0.05, 9.1, 3);
       g.fillStyle = `rgba(0,0,0,${Math.max(0, n - 0.5) * 0.4})`;
@@ -929,7 +867,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     c.height = H * R;
     const g = c.getContext('2d')!;
     g.scale(R, R);
-    // macizos redondeados como los Montes Apeninos de las fotos del Apolo 15
     const layers = [
       { base: H * 0.52, amp: 230, freq: 1.6, top: 112, bottom: 46, s: seed + 7 },
       { base: H * 0.63, amp: 150, freq: 2.6, top: 128, bottom: 58, s: seed + 13 },
@@ -939,7 +876,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       const n = Math.ceil(W / 2) + 2;
       const hs = new Float32Array(n);
       for (let i = 0; i < n; i++) hs[i] = L.base - Math.pow(fbm(nz, ((i * 2) / W) * L.freq, 1.7, 3), 1.8) * L.amp;
-      // silueta con degradado base
       g.beginPath();
       g.moveTo(0, H);
       for (let i = 0; i < n; i++) g.lineTo(i * 2, hs[i]);
@@ -951,11 +887,10 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       base.addColorStop(1, '#141413');
       g.fillStyle = base;
       g.fill();
-      // laderas que miran al Sol (izquierda) más claras, con pendiente suavizada
       g.save();
       g.clip();
       for (let i = 4; i < n - 4; i++) {
-        const slope = (hs[i + 4] - hs[i - 4]) / 16; // < 0: sube hacia la derecha
+        const slope = (hs[i + 4] - hs[i - 4]) / 16;
         const lit = Math.max(0, Math.min(1, -slope * 1.4 + 0.15));
         if (lit < 0.03) continue;
         const v = L.top + 40;
@@ -966,7 +901,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
         g.fillRect(i * 2, hs[i], 2.2, 160);
       }
       g.restore();
-      // borde superior nítido
       g.strokeStyle = `rgba(${L.top + 50},${L.top + 48},${L.top + 42},.35)`;
       g.lineWidth = 1;
       g.beginPath();
@@ -994,7 +928,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     skyCanvas = c;
   };
 
-  // ---------- cámara y dibujo ----------
   let dpr = 1;
   const resize = () => {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1005,7 +938,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     cockpit.resize();
   };
 
-  /** En pantallas verticales se deja ver más cielo para que el suelo y el módulo quepan. */
   const skyTop = () => (canvas.height > canvas.width ? -H * 0.3 : 0);
 
   const view = () => {
@@ -1032,11 +964,9 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     const sx = shake > 0 ? (Math.random() - 0.5) * shake * dpr : 0;
     const sy = shake > 0 ? (Math.random() - 0.5) * shake * dpr : 0;
 
-    // Tierra (casi fija, leve parallax)
     const es = Math.min(canvas.width, canvas.height) * 0.11;
     ctx.drawImage(earthImg, canvas.width * 0.78 - (camX - W / 2) * 0.02 * v.base, canvas.height * 0.1, es, es);
 
-    // montañas (parallax)
     if (mountainCanvas) {
       const mz = 1 + (camZ - 1) * 0.35;
       const ms = v.base * mz;
@@ -1056,7 +986,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     const alt = altitude();
     const gy = groundAt(x);
 
-    // zona de alunizaje (marcador holográfico)
     if (status !== 'landed') {
       const zy = groundAt((zoneX1 + zoneX2) / 2);
       const pulse = 0.55 + 0.45 * Math.sin(time * 4);
@@ -1082,10 +1011,9 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       ctx.fillStyle = `rgba(103,232,249,${0.6 + pulse * 0.4})`;
       ctx.font = `700 ${11 / Math.max(1, camZ * 0.8)}px Orbitron, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText('ZONA DE ALUNIZAJE', (zoneX1 + zoneX2) / 2, zy - 22);
+      ctx.fillText(tr('LANDING ZONE', 'ZONA DE ALUNIZAJE'), (zoneX1 + zoneX2) / 2, zy - 22);
     }
 
-    // brillo del motor sobre el suelo
     if (throttle > 0.05 && alt < 160 && status === 'flying') {
       const k = throttle * (1 - alt / 160);
       const rg = ctx.createRadialGradient(x, gy, 0, x, gy, 70);
@@ -1095,7 +1023,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       ctx.fillRect(x - 70, gy - 70, 140, 140);
     }
 
-    // sombra del módulo (Sol bajo a la izquierda → sombra larga a la derecha)
     if (status !== 'crashed') {
       const off = Math.min(220, alt * 1.4);
       const sxp = x + 18 + off;
@@ -1109,11 +1036,9 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       }
     }
 
-    // partículas detrás del módulo (polvo)
     drawParticles(true);
 
     if (status !== 'crashed') {
-      // chorro del motor (en el vacío es tenue: núcleo brillante + cono suave)
       if (throttle > 0.02 && fuel > 0 && (status === 'flying' || status === 'countdown')) {
         const len = 18 + throttle * (34 + Math.random() * 14);
         const top = y + 21;
@@ -1136,7 +1061,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
         ctx.fillRect(x - 12, top - 10, 24, 24);
       }
       ctx.drawImage(lmSprite, x + LM_BOX.x, y + LM_BOX.y, LM_BOX.w, LM_BOX.h);
-      // sondas de contacto (se doblan al tocar)
       if (status === 'flying' || status === 'countdown') {
         ctx.strokeStyle = '#c9ccd3';
         ctx.lineWidth = 0.7;
@@ -1151,7 +1075,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
 
     drawParticles(false);
 
-    // destello (choque)
     if (flash > 0) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = `rgba(255,240,220,${flash})`;
@@ -1187,7 +1110,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     ctx.globalAlpha = 1;
   };
 
-  // ---------- física ----------
   const emitDust = (dt: number) => {
     const alt = altitude();
     if (alt > 220 || throttle < 0.08) return;
@@ -1213,7 +1135,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     }
   };
 
-  /** Nube de polvo al posarse: el regolito sale disparado hacia los lados y se asienta. */
   const dustCloud = () => {
     const gy = groundAt(x);
     for (let i = 0; i < 160; i++) {
@@ -1236,7 +1157,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
   };
 
   const emitPuff = (side: -1 | 1) => {
-    // side = lado del cuadrante que dispara; el chorro sale hacia afuera
     for (let i = 0; i < 2; i++) {
       particles.push({
         x: x + side * 30,
@@ -1389,7 +1309,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     particles = particles.filter((p) => p.life > 0);
     if (particles.length > 900) particles.splice(0, particles.length - 900);
 
-    // cámara: se acerca al bajar
     const alt = altitude();
     const zt = status === 'brief' ? 1 : alt < 260 ? 1 + (1 - alt / 260) * 0.95 : 1;
     camZ += (zt - camZ) * Math.min(1, dt * 1.8);
@@ -1401,7 +1320,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     updateHud();
   };
 
-  // ---------- avisos de Houston ----------
   const say = (text: string, from: 'houston' | 'lm' = 'houston') => {
     if (from === 'houston') sound.quindar();
     capcom.querySelectorAll('p').forEach((p) => p.classList.add('old'));
@@ -1414,33 +1332,31 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
 
   const checkEvents = () => {
     const altM = altitude() / PX_PER_M;
-    // alarma 1202 (como en el Apolo 11), solo una vez y sin efecto en la física
     if (!flags.alarm && flightTime > flags.alarmAt) {
       flags.alarm = true;
       alarmUntil = time + 3;
       sound.alarm();
-      say('Alarma de programa ¡1202! ¿Qué hacemos?', 'lm');
-      later(1600, () => say('Seguimos adelante con esa alarma. ¡GO! Es solo la computadora sobrecargada.'));
+      say(tr('Program alarm 1202! What do we do?', 'Alarma de programa ¡1202! ¿Qué hacemos?'), 'lm');
+      later(1600, () => say(tr('We are GO on that alarm. It is just the computer overloaded.', 'Seguimos adelante con esa alarma. ¡GO! Es solo la computadora sobrecargada.')));
     }
     for (const mark of [30, 20, 10, 5]) {
       if (altM < mark && !flags.alts.has(mark)) {
         flags.alts.add(mark);
         const desc = (vy / PX_PER_M).toFixed(1);
-        say(`${mark} metros, bajando a ${desc} m/s.`, 'lm');
+        say(tr(`${mark} meters, down at ${desc} m/s.`, `${mark} metros, bajando a ${desc} m/s.`), 'lm');
       }
     }
     if (!flags.fuel60 && fuel < 30) {
       flags.fuel60 = true;
-      say('Combustible: 60 segundos.');
+      say(tr('Fuel: 60 seconds.', 'Combustible: 60 segundos.'));
     }
     if (!flags.fuel30 && fuel < 15) {
       flags.fuel30 = true;
       sound.beep();
-      say('¡30 segundos! Aterriza ya.');
+      say(tr('30 seconds! Land now.', '¡30 segundos! Aterriza ya.'));
     }
   };
 
-  // ---------- HUD ----------
   const updateHud = () => {
     const alt = altitude();
     hudAlt.textContent = `${(alt / PX_PER_M).toFixed(1)}`;
@@ -1462,20 +1378,18 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     const zc = (zoneX1 + zoneX2) / 2;
     const dist = (zc - x) / PX_PER_M;
     const inside = x - PAD_X >= zoneX1 && x + PAD_X <= zoneX2;
-    hudZone.textContent = inside ? '◆ SOBRE LA ZONA' : `ZONA: ${dist < 0 ? '←' : ''} ${Math.abs(dist).toFixed(0)} m ${dist > 0 ? '→' : ''}`;
+    hudZone.textContent = inside ? tr('◆ OVER THE ZONE', '◆ SOBRE LA ZONA') : `${tr('ZONE', 'ZONA')}: ${dist < 0 ? '←' : ''} ${Math.abs(dist).toFixed(0)} m ${dist > 0 ? '→' : ''}`;
     hudProg.textContent = alt / PX_PER_M > 15 ? 'PROG 64' : 'PROG 66';
     lFuel.className = `lm-light${fuel < 25 ? ' on-amber' : ''}${fuel < 12 ? ' blink' : ''}`;
     lAlarm.className = `lm-light${time < alarmUntil ? ' on-red blink' : ''}`;
     lContact.className = `lm-light${time < contactUntil || status === 'landed' ? ' on-green' : ''}`;
     thrBar.style.width = `${throttle * 100}%`;
-    // botones iluminados (teclado o táctil)
     keyBtns.forEach((b) => {
       const k = b.dataset.ctl as keyof typeof input;
       b.classList.toggle('is-on', status === 'flying' && (input[k] || touch[k]));
     });
   };
 
-  // ---------- aterrizaje / choque ----------
   const touchdown = () => {
     const inZone = x - PAD_X >= zoneX1 && x + PAD_X <= zoneX2;
     const vyOk = vy <= cfg.vy;
@@ -1492,10 +1406,10 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       throttle = 0;
       pad.classList.add('disabled');
       sound.beep(true);
-      say('¡Luz de contacto!', 'lm');
-      later(900, () => say('Motor apagado. El Falcon ha aterrizado.', 'lm'));
+      say(tr('Contact light!', '¡Luz de contacto!'), 'lm');
+      later(900, () => say(tr('Engine stop. The Falcon has landed.', 'Motor apagado. El Falcon ha aterrizado.'), 'lm'));
       later(2000, () => {
-        say('Copiado, Falcon. ¡Están en la Luna! Felicitaciones.');
+        say(tr('Roger, Falcon. You are on the Moon! Congratulations.', 'Copiado, Falcon. ¡Están en la Luna! Felicitaciones.'));
         sound.success();
       });
       const stars = 1 + (landVy < cfg.vy * 0.55 ? 1 : 0) + (fuel > 25 ? 1 : 0);
@@ -1510,18 +1424,17 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     shake = 14;
     sound.crash();
     const reasons: string[] = [];
-    if (!inZone) reasons.push('tocaste suelo fuera de la zona de alunizaje');
-    if (!vyOk) reasons.push(`bajabas a ${vyM.toFixed(1)} m/s (máximo ${(cfg.vy / PX_PER_M).toFixed(1)})`);
-    if (!vxOk) reasons.push(`te desplazabas de lado a ${vxM.toFixed(1)} m/s (máximo ${(cfg.vx / PX_PER_M).toFixed(1)})`);
-    later(700, () => say('Falcon, ¿nos copian? … Perdimos la señal.'));
+    if (!inZone) reasons.push(tr('you touched down outside the landing zone', 'tocaste suelo fuera de la zona de alunizaje'));
+    if (!vyOk) reasons.push(tr(`you were descending at ${vyM.toFixed(1)} m/s (max ${(cfg.vy / PX_PER_M).toFixed(1)})`, `bajabas a ${vyM.toFixed(1)} m/s (máximo ${(cfg.vy / PX_PER_M).toFixed(1)})`));
+    if (!vxOk) reasons.push(tr(`you were drifting sideways at ${vxM.toFixed(1)} m/s (max ${(cfg.vx / PX_PER_M).toFixed(1)})`, `te desplazabas de lado a ${vxM.toFixed(1)} m/s (máximo ${(cfg.vx / PX_PER_M).toFixed(1)})`));
+    later(700, () => say(tr('Falcon, do you copy? … We lost the signal.', 'Falcon, ¿nos copian? … Perdimos la señal.')));
     later(1500, () => showCrash(reasons));
   };
 
-  // ---------- paneles ----------
   const keyHtml = `
     <div class="lm-keys">
-      <span class="lm-cap" data-cap="up">↑ / ESPACIO</span> motor
-      <span class="lm-cap" data-cap="left">←</span><span class="lm-cap" data-cap="right">→</span> propulsores laterales
+      <span class="lm-cap" data-cap="up">↑ / ${tr('SPACE', 'ESPACIO')}</span> ${tr('engine', 'motor')}
+      <span class="lm-cap" data-cap="left">←</span><span class="lm-cap" data-cap="right">→</span> ${tr('side thrusters', 'propulsores laterales')}
     </div>`;
 
   const showBrief = () => {
@@ -1529,26 +1442,26 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     hud.hidden = true;
     pad.classList.add('disabled');
     const rules = () => `
-      <li><i>1</i><span>Mira por la ventana: mueve la nave hasta que la <b>zona azul</b> quede en la <b>mira</b> del centro.</span></li>
-      <li><i>2</i><span>Velocidad vertical menor a <b>${(cfg.vy / PX_PER_M).toFixed(1)} m/s</b>.</span></li>
-      <li><i>3</i><span>Velocidad horizontal menor a <b>${(cfg.vx / PX_PER_M).toFixed(1)} m/s</b>.</span></li>
-      <li><i>4</i><span>Antes de quedarte sin <b>combustible</b>. ¡La gravedad lunar es 1/6 de la terrestre!</span></li>`;
+      <li><i>1</i><span>${tr('Look out the window: move the craft until the <b>blue zone</b> is in the <b>crosshairs</b> in the center.', 'Mira por la ventana: mueve la nave hasta que la <b>zona azul</b> quede en la <b>mira</b> del centro.')}</span></li>
+      <li><i>2</i><span>${tr('Vertical speed below', 'Velocidad vertical menor a')} <b>${(cfg.vy / PX_PER_M).toFixed(1)} m/s</b>.</span></li>
+      <li><i>3</i><span>${tr('Horizontal speed below', 'Velocidad horizontal menor a')} <b>${(cfg.vx / PX_PER_M).toFixed(1)} m/s</b>.</span></li>
+      <li><i>4</i><span>${tr('Before you run out of <b>fuel</b>. Lunar gravity is 1/6 of Earth\'s!', 'Antes de quedarte sin <b>combustible</b>. ¡La gravedad lunar es 1/6 de la terrestre!')}</span></li>`;
     panel.hidden = false;
     panel.innerHTML = `
-      <p class="lm-panel__kicker">Misión 1 · Apolo 15 · Hadley-Apennine</p>
-      <h3 class="lm-panel__title">Pilota el módulo lunar Falcon hasta la superficie</h3>
+      <p class="lm-panel__kicker">${tr('Mission 1 · Apollo 15 · Hadley-Apennine', 'Misión 1 · Apolo 15 · Hadley-Apennine')}</p>
+      <h3 class="lm-panel__title">${tr('Fly the lunar module Falcon down to the surface', 'Pilota el módulo lunar Falcon hasta la superficie')}</h3>
       <div class="lm-brief">
-        <div class="lm-brief__art"><img alt="Módulo lunar Apolo" src="${lmSprite.toDataURL()}"></div>
+        <div class="lm-brief__art"><img alt="${tr('Apollo lunar module', 'Módulo lunar Apolo')}" src="${lmSprite.toDataURL()}"></div>
         <ul class="lm-rules" data-rules>${rules()}</ul>
       </div>
-      <div class="lm-diff" role="group" aria-label="Dificultad">
+      <div class="lm-diff" role="group" aria-label="${tr('Difficulty', 'Dificultad')}">
         ${(Object.keys(LEVELS) as Difficulty[])
           .map((d) => `<button type="button" data-diff="${d}" aria-pressed="${d === difficulty}"><b>${LEVELS[d].label}</b><small>${LEVELS[d].desc}</small></button>`)
           .join('')}
       </div>
       ${keyHtml}
-      <p class="lm-text" style="margin-top:-8px;font-size:13px">Prueba las teclas: se iluminan. En celular usa los botones de la esquina.</p>
-      <div class="lm-actions"><button type="button" class="lm-go" data-go>INICIAR DESCENSO</button></div>`;
+      <p class="lm-text" style="margin-top:-8px;font-size:13px">${tr('Try the keys: they light up. On a phone, use the buttons in the corner.', 'Prueba las teclas: se iluminan. En celular usa los botones de la esquina.')}</p>
+      <div class="lm-actions"><button type="button" class="lm-go" data-go>${tr('START DESCENT', 'INICIAR DESCENSO')}</button></div>`;
     panel.querySelectorAll<HTMLButtonElement>('[data-diff]').forEach((b) =>
       b.addEventListener('click', () => {
         difficulty = b.dataset.diff as Difficulty;
@@ -1581,7 +1494,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
       countEl.innerHTML = '';
       status = 'flying';
       pad.classList.remove('disabled');
-      say('Falcon, tienen luz verde para el descenso. ¡GO!');
+      say(tr('Falcon, you are GO for descent!', 'Falcon, tienen luz verde para el descenso. ¡GO!'));
     });
   };
 
@@ -1589,20 +1502,22 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     panel.hidden = false;
     const s = Math.floor(flightTime);
     panel.innerHTML = `
-      <p class="lm-panel__kicker" style="text-align:center">Luz de contacto · ${cfg.label}</p>
-      <h3 class="lm-panel__title ok" style="text-align:center">¡Alunizaje exitoso!</h3>
-      <div class="lm-stars" aria-label="${stars} de 3 estrellas">${[1, 2, 3].map((n) => `<span class="${n <= stars ? 'on' : ''}">★</span>`).join('')}</div>
+      <p class="lm-panel__kicker" style="text-align:center">${tr('Contact light', 'Luz de contacto')} · ${cfg.label}</p>
+      <h3 class="lm-panel__title ok" style="text-align:center">${tr('Successful landing!', '¡Alunizaje exitoso!')}</h3>
+      <div class="lm-stars" aria-label="${stars} ${tr('of 3 stars', 'de 3 estrellas')}">${[1, 2, 3].map((n) => `<span class="${n <= stars ? 'on' : ''}">★</span>`).join('')}</div>
       <div class="lm-stats">
-        <div><span>Contacto</span><b>${vyM.toFixed(1)} m/s</b></div>
-        <div><span>Desvío</span><b>${off.toFixed(1)} m</b></div>
-        <div><span>Combustible</span><b>${Math.ceil(fuel)}%</b></div>
-        <div><span>Tiempo</span><b>${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</b></div>
+        <div><span>${tr('Contact', 'Contacto')}</span><b>${vyM.toFixed(1)} m/s</b></div>
+        <div><span>${tr('Offset', 'Desvío')}</span><b>${off.toFixed(1)} m</b></div>
+        <div><span>${tr('Fuel', 'Combustible')}</span><b>${Math.ceil(fuel)}%</b></div>
+        <div><span>${tr('Time', 'Tiempo')}</span><b>${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</b></div>
       </div>
-      <p class="lm-text">El 30 de julio de 1971, David Scott y James Irwin posaron el Falcon en Hadley-Apennine.
-      Dentro llevaban, plegado, el primer vehículo lunar (LRV).</p>
+      <p class="lm-text">${tr(
+        'On July 30, 1971, David Scott and James Irwin set the Falcon down at Hadley-Apennine. Inside, folded up, they carried the first lunar vehicle (LRV).',
+        'El 30 de julio de 1971, David Scott y James Irwin posaron el Falcon en Hadley-Apennine. Dentro llevaban, plegado, el primer vehículo lunar (LRV).',
+      )}</p>
       <div class="lm-actions">
-        <button type="button" class="lm-alt" data-again>Volver a jugar</button>
-        <button type="button" class="lm-go" data-continue>CONTINUAR</button>
+        <button type="button" class="lm-alt" data-again>${tr('Play again', 'Volver a jugar')}</button>
+        <button type="button" class="lm-go" data-continue>${tr('CONTINUE', 'CONTINUAR')}</button>
       </div>`;
     panel.querySelector('[data-again]')!.addEventListener('click', showBrief);
     panel.querySelector('[data-continue]')!.addEventListener('click', () => {
@@ -1614,33 +1529,31 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
 
   const showCrash = (reasons: string[]) => {
     panel.hidden = false;
-    const tip = reasons.some((r) => r.includes('bajabas'))
-      ? 'Consejo: mantén pulsado el motor en ráfagas cortas cuando estés a menos de 20 m.'
-      : reasons.some((r) => r.includes('lado'))
-        ? 'Consejo: usa el propulsor contrario para frenar antes de tocar el suelo.'
-        : 'Consejo: mira el indicador "ZONA" del panel; te dice hacia dónde ir.';
+    const tip = reasons.some((r) => r.includes(tr('descending', 'bajabas')))
+      ? tr('Tip: hold the engine in short bursts when you are below 20 m.', 'Consejo: mantén pulsado el motor en ráfagas cortas cuando estés a menos de 20 m.')
+      : reasons.some((r) => r.includes(tr('sideways', 'lado')))
+        ? tr('Tip: use the opposite thruster to brake before touching the ground.', 'Consejo: usa el propulsor contrario para frenar antes de tocar el suelo.')
+        : tr('Tip: watch the "ZONE" indicator on the panel; it tells you which way to go.', 'Consejo: mira el indicador "ZONA" del panel; te dice hacia dónde ir.');
     panel.innerHTML = `
-      <p class="lm-panel__kicker" style="text-align:center">Señal perdida</p>
-      <h3 class="lm-panel__title bad" style="text-align:center">El módulo se estrelló</h3>
-      <p class="lm-text">Motivo: ${reasons.join(' y ')}.<br>${tip}</p>
+      <p class="lm-panel__kicker" style="text-align:center">${tr('Signal lost', 'Señal perdida')}</p>
+      <h3 class="lm-panel__title bad" style="text-align:center">${tr('The module crashed', 'El módulo se estrelló')}</h3>
+      <p class="lm-text">${tr('Reason', 'Motivo')}: ${reasons.join(tr(' and ', ' y '))}.<br>${tip}</p>
       <div class="lm-actions">
-        <button type="button" class="lm-alt" data-brief>Cambiar dificultad</button>
-        <button type="button" class="lm-go" data-retry>REINTENTAR</button>
+        <button type="button" class="lm-alt" data-brief>${tr('Change difficulty', 'Cambiar dificultad')}</button>
+        <button type="button" class="lm-go" data-retry>${tr('RETRY', 'REINTENTAR')}</button>
       </div>`;
     panel.querySelector('[data-brief]')!.addEventListener('click', showBrief);
     panel.querySelector('[data-retry]')!.addEventListener('click', startCountdown);
     panel.querySelector<HTMLButtonElement>('[data-retry]')!.focus();
   };
 
-  // ---------- partida ----------
   const newGame = (keepWorld: boolean) => {
-    const newW = 1100; // mundo fijo: el monitor es solo una cámara
+    const newW = 1100;
     if (!keepWorld || !groundCanvas || newW !== W) {
       W = newW;
       buildWorld();
     }
     const zc = (zoneX1 + zoneX2) / 2;
-    // empezar lejos de la zona para que haya que maniobrar
     const side = zc > W / 2 ? -1 : 1;
     x = Math.max(80, Math.min(W - 80, zc + side * (W * (0.22 + Math.random() * 0.12))));
     y = 80;
@@ -1661,7 +1574,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     camZ = 1;
   };
 
-  // ---------- bucle ----------
   let raf = 0;
   let last = performance.now();
   const loop = (t: number) => {
@@ -1689,12 +1601,11 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     const lost = status === 'crashed';
     if (liveEl.classList.contains('off') !== lost) {
       liveEl.classList.toggle('off', lost);
-      liveEl.lastChild!.textContent = lost ? 'SIN SEÑAL' : 'SEÑAL EN VIVO';
+      liveEl.lastChild!.textContent = lost ? tr('NO SIGNAL', 'SIN SEÑAL') : tr('LIVE SIGNAL', 'SEÑAL EN VIVO');
     }
     raf = requestAnimationFrame(loop);
   };
 
-  // ---------- controles ----------
   const keyMap: Record<string, keyof typeof input> = {
     ArrowUp: 'up',
     KeyW: 'up',
@@ -1709,7 +1620,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     if (!k) return;
     const down = e.type === 'keydown';
     if (status === 'flying' || status === 'countdown') e.preventDefault();
-    if (e.code === 'Space' && status !== 'flying' && status !== 'countdown') return; // no robar el "click" de botones
+    if (e.code === 'Space' && status !== 'flying' && status !== 'countdown') return;
     input[k] = down;
     panel.querySelector(`[data-cap="${k}"]`)?.classList.toggle('is-on', down);
     if (down && status === 'brief') {
@@ -1743,7 +1654,7 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
     muteBtn.innerHTML = sound.muted
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m23 9-6 6M17 9l6 6"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
-    muteBtn.setAttribute('aria-label', sound.muted ? 'Activar sonido' : 'Silenciar sonido');
+    muteBtn.setAttribute('aria-label', sound.muted ? tr('Turn sound on', 'Activar sonido') : tr('Mute sound', 'Silenciar sonido'));
   };
   muteBtn.addEventListener('click', () => {
     sound.init();
@@ -1755,7 +1666,6 @@ export default function lunarLanding({ root, win }: GameContext): () => void {
   const ro = new ResizeObserver(() => resize());
   ro.observe(canvas);
   ro.observe(vcanvas);
-  // reloj de Houston (hora real)
   const hands = { h: $('[data-hh]'), m: $('[data-mm]'), s: $('[data-ss]') };
   const tick = () => {
     const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false }).formatToParts(new Date());

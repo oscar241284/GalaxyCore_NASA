@@ -1,18 +1,10 @@
-/**
- * SPIRIT · MISIÓN 4 · Atrapado en la arena.
- *
- * En 2009 Spirit quedó atrapado en arena blanda (un lugar llamado «Troy»). En la Tierra, los
- * ingenieros probaron maniobras durante meses con un rover gemelo en una caja de arena.
- * Mecánica (puzzle con niebla): el niño es ingeniero en esa caja de arena. Solo ve las casillas
- * cercanas; arena blanda hunde (+2), suelo firme ayuda a salir (−1), las rocas bloquean.
- * Tiene 2 escaneos por prueba para ver más lejos. Si se hunde del todo, se reinicia la prueba.
- */
 import type { GameContext } from './index';
 import { brief, dots, injectKit, MER_SVG, say, sfx, stopSpeak, theme } from './lkKit';
+import { tr } from '../i18n';
 
 const STAGES: { name: string; map: string[] }[] = [
-  { name: 'Prueba 1 · Caja de arena', map: ['sssssfE', 'srrsffs', 'sfffsrs', 'sfrssss', 'Sfsssrs', 'ssssrss'] },
-  { name: 'Prueba 2 · Igual que en Troy', map: ['Essrsss', 'fsrffss', 'fsssfrs', 'rrfssfs', 'sffsrfs', 'sssssfS'] },
+  { name: tr('Test 1 · Sandbox', 'Prueba 1 · Caja de arena'), map: ['sssssfE', 'srrsffs', 'sfffsrs', 'sfrssss', 'Sfsssrs', 'ssssrss'] },
+  { name: tr('Test 2 · Just like Troy', 'Prueba 2 · Igual que en Troy'), map: ['Essrsss', 'fsrffss', 'fsssfrs', 'rrfssfs', 'sffsrfs', 'sssssfS'] },
 ];
 const MAX_SINK = 10;
 const START_SINK = 5;
@@ -104,18 +96,18 @@ export default function spSand({ root, win }: GameContext): () => void {
 
     root.innerHTML = `
       <div class="lk"${theme('#3b82f6', '#93c5fd')}><div class="lk__wrap">
-        <div class="lk-top"><p class="lk-task"><i>4</i>${st.name}: saca al rover gemelo hasta la salida verde.</p>${dots(STAGES.length, si, 'PRUEBA')}</div>
+        <div class="lk-top"><p class="lk-task"><i>4</i>${st.name}: ${tr('get the twin rover to the green exit.', 'saca al rover gemelo hasta la salida verde.')}</p>${dots(STAGES.length, si, tr('TEST', 'PRUEBA'))}</div>
         <div class="sps">
           <div class="sps__grid" data-grid style="grid-template-columns: repeat(${W}, var(--c))"></div>
           <div class="sps__side">
             <div class="sps__sinkview">${SINK_SVG}</div>
-            <div class="sps__meter"><small>HUNDIMIENTO</small><div class="sps__bar" data-bar></div></div>
+            <div class="sps__meter"><small>${tr('SINKING', 'HUNDIMIENTO')}</small><div class="sps__bar" data-bar></div></div>
             <div class="sps__legend">
-              <span><i style="background:#e8a96c"></i>Arena blanda: se hunde más</span>
-              <span><i style="background:#7c5036"></i>Suelo firme: ayuda a salir</span>
-              <span><i style="background:#3a241a"></i>Roca: no se puede pasar</span>
+              <span><i style="background:#e8a96c"></i>${tr('Soft sand: sinks more', 'Arena blanda: se hunde más')}</span>
+              <span><i style="background:#7c5036"></i>${tr('Firm ground: helps you get out', 'Suelo firme: ayuda a salir')}</span>
+              <span><i style="background:#3a241a"></i>${tr('Rock: cannot pass', 'Roca: no se puede pasar')}</span>
             </div>
-            <button type="button" class="lk-btn" data-scan>📡 Escanear alrededor (${scans})</button>
+            <button type="button" class="lk-btn" data-scan>📡 ${tr('Scan around', 'Escanear alrededor')} (${scans})</button>
             <p class="lk-say" data-say></p>
           </div>
         </div>
@@ -152,9 +144,9 @@ export default function spSand({ root, win }: GameContext): () => void {
       bar.innerHTML = Array.from({ length: MAX_SINK }, (_, i) => `<i class="${i < sink ? (sink >= 8 ? 'on hot' : 'on') : ''}"></i>`).join('');
       roverG.setAttribute('transform', `translate(0 ${sink * 3.2})`);
       scanBtn.disabled = busy || scans <= 0;
-      scanBtn.textContent = `📡 Escanear alrededor (${scans})`;
+      scanBtn.textContent = `📡 ${tr('Scan around', 'Escanear alrededor')} (${scans})`;
     };
-    say(sayEl, si === 0 ? 'Eres ingeniero en la Tierra. Toca una casilla vecina para mover el rover gemelo. ¡Busca suelo firme!' : 'Esta caja copia la arena de Troy, donde quedó Spirit. ¡Planea bien tu ruta!');
+    say(sayEl, si === 0 ? tr('You are an engineer on Earth. Tap a neighboring square to move the twin rover. Look for firm ground!', 'Eres ingeniero en la Tierra. Toca una casilla vecina para mover el rover gemelo. ¡Busca suelo firme!') : tr('This box copies the sand at Troy, where Spirit got stuck. Plan your route carefully!', 'Esta caja copia la arena de Troy, donde quedó Spirit. ¡Planea bien tu ruta!'));
     render();
 
     const spin = (soft: boolean) => {
@@ -187,19 +179,19 @@ export default function spSand({ root, win }: GameContext): () => void {
         if (ch === 'E') {
           sfx.ok();
           if (si + 1 < STAGES.length) {
-            say(sayEl, `¡Salió de la arena en ${moves} movimientos! Ahora, una prueba más difícil…`, 'ok');
+            say(sayEl, tr(`It got out of the sand in ${moves} moves! Now, a harder test…`, `¡Salió de la arena en ${moves} movimientos! Ahora, una prueba más difícil…`), 'ok');
             later(() => play(si + 1), 1800);
           } else finish();
           return;
         }
         if (sink >= MAX_SINK) {
           sfx.soft();
-          say(sayEl, '¡Se hundió hasta los ejes! Así le pasó a Spirit. Reiniciemos la caja de arena e intenta otra ruta con más suelo firme.', 'warn');
+          say(sayEl, tr('It sank up to its axles! That is what happened to Spirit. Let\'s reset the sandbox and try another route with more firm ground.', '¡Se hundió hasta los ejes! Así le pasó a Spirit. Reiniciemos la caja de arena e intenta otra ruta con más suelo firme.'), 'warn');
           later(() => play(si), 2600);
           return;
         }
-        if (ch === 's') say(sayEl, sink >= 8 ? '¡Cuidado! Está muy hundido. Busca suelo firme ya.' : 'Arena blanda: las ruedas patinan y se hunde un poco más.', sink >= 8 ? 'warn' : '');
-        else say(sayEl, 'Suelo firme: las ruedas agarran y el rover sube un poco. ¡Bien!', 'ok');
+        if (ch === 's') say(sayEl, sink >= 8 ? tr('Careful! It is sinking deep. Find firm ground now.', '¡Cuidado! Está muy hundido. Busca suelo firme ya.') : tr('Soft sand: the wheels slip and it sinks a little more.', 'Arena blanda: las ruedas patinan y se hunde un poco más.'), sink >= 8 ? 'warn' : '');
+        else say(sayEl, tr('Firm ground: the wheels grip and the rover rises a little. Nice!', 'Suelo firme: las ruedas agarran y el rover sube un poco. ¡Bien!'), 'ok');
         render();
       }, 480);
     };
@@ -209,7 +201,7 @@ export default function spSand({ root, win }: GameContext): () => void {
       scans--;
       reveal(2);
       sfx.radio();
-      say(sayEl, 'Escaneo completo: ahora ves más lejos. Úsalo para planear la ruta.');
+      say(sayEl, tr('Scan complete: now you can see farther. Use it to plan the route.', 'Escaneo completo: ahora ves más lejos. Úsalo para planear la ruta.'));
       render();
     });
   };
@@ -220,29 +212,30 @@ export default function spSand({ root, win }: GameContext): () => void {
     const box = document.createElement('div');
     box.className = 'lk-learn';
     box.innerHTML = `
-      <h4>LA HISTORIA REAL</h4>
-      <p style="margin:0 0 12px">En 2009, Spirit quedó atrapado en la arena de <b>Troy</b>. En la Tierra, los ingenieros probaron maniobras con un rover gemelo,
-      como hiciste tú. En Marte no logró salir, y en 2010 el frío del invierno lo dejó sin energía. Pero Spirit iba a trabajar 90 días…
-      <b>¡y exploró más de 6 años!</b> Sus descubrimientos sobre el agua de Marte siguen ayudando a los científicos.</p>
-      <button type="button" class="lk-btn lk-btn--go" data-end>¡Misión cumplida!</button>`;
+      <h4>${tr('THE REAL STORY', 'LA HISTORIA REAL')}</h4>
+      <p style="margin:0 0 12px">${tr(
+        'In 2009, Spirit got stuck in the sand at <b>Troy</b>. On Earth, engineers tested maneuvers with a twin rover, just like you did. On Mars it could not get out, and in 2010 the winter cold left it without power. But Spirit was supposed to work for 90 days… <b>and it explored for more than 6 years!</b> Its discoveries about water on Mars still help scientists.',
+        'En 2009, Spirit quedó atrapado en la arena de <b>Troy</b>. En la Tierra, los ingenieros probaron maniobras con un rover gemelo, como hiciste tú. En Marte no logró salir, y en 2010 el frío del invierno lo dejó sin energía. Pero Spirit iba a trabajar 90 días… <b>¡y exploró más de 6 años!</b> Sus descubrimientos sobre el agua de Marte siguen ayudando a los científicos.',
+      )}</p>
+      <button type="button" class="lk-btn lk-btn--go" data-end>${tr('Mission accomplished!', '¡Misión cumplida!')}</button>`;
     wrap.appendChild(box);
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     box.querySelector('[data-end]')!.addEventListener('click', win);
   };
 
   brief(root, {
-    kicker: 'SPIRIT · MISIÓN 4',
-    title: 'Atrapado en la arena',
-    text: 'En 2009, las ruedas de Spirit se hundieron en arena blanda. ¡Había que encontrar una salida!',
-    goal: 'Como ingeniero, saca al rover gemelo de 2 cajas de arena sin que se hunda del todo.',
+    kicker: tr('SPIRIT · MISSION 4', 'SPIRIT · MISIÓN 4'),
+    title: tr('Stuck in the sand', 'Atrapado en la arena'),
+    text: tr('In 2009, Spirit\'s wheels sank into soft sand. A way out had to be found!', 'En 2009, las ruedas de Spirit se hundieron en arena blanda. ¡Había que encontrar una salida!'),
+    goal: tr('As an engineer, get the twin rover out of 2 sandboxes without it sinking all the way.', 'Como ingeniero, saca al rover gemelo de 2 cajas de arena sin que se hunda del todo.'),
     art: MER_SVG,
     accent: '#3b82f6',
     soft: '#93c5fd',
     guess: {
-      q: '¿Cómo buscaron los ingenieros la forma de sacar a Spirit de la arena?',
-      options: ['Probando con un rover gemelo en una caja de arena', 'Enviando un astronauta a empujarlo'],
+      q: tr('How did the engineers look for a way to get Spirit out of the sand?', '¿Cómo buscaron los ingenieros la forma de sacar a Spirit de la arena?'),
+      options: [tr('By testing with a twin rover in a sandbox', 'Probando con un rover gemelo en una caja de arena'), tr('By sending an astronaut to push it', 'Enviando un astronauta a empujarlo')],
       correct: 0,
-      why: 'Armaron en la Tierra una caja de arena parecida a la de Marte y probaron maniobras con un rover gemelo.',
+      why: tr('They built a sandbox on Earth similar to the one on Mars and tested maneuvers with a twin rover.', 'Armaron en la Tierra una caja de arena parecida a la de Marte y probaron maniobras con un rover gemelo.'),
     },
     onStart: () => play(0),
   });

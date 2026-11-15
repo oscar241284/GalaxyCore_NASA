@@ -1,7 +1,7 @@
 # NovaCore – Misión Robots
 
 Experiencia web educativa del equipo **NovaCore** (NASA Space Apps): el astronauta conoce
-4 robots que exploraron la Luna y Marte — **LRV (Apollo 15)**, **Lunojod 2**, **Spirit** y
+3 robots que exploraron la Luna y Marte — **LRV (Apollo 15)**, **Spirit** y
 **Opportunity (MER-B)** —, los reconstruye en 3D, recorre su ruta en un mapa y supera sus
 pruebas hasta obtener su certificado.
 
@@ -40,7 +40,7 @@ fuente de verdad del diagrama:
 | home | podiums | INICIAR MISIÓN con nombre guardado |
 | name | podiums | EMPEZAR / Enter (nombre no vacío) |
 | podiums | launch | Click en un podio |
-| podiums | final | Automático: 16/16 niveles y nivel extra pendiente |
+| podiums | final | Automático: 12/12 niveles y nivel extra pendiente |
 | podiums | certificate | "Ver certificado" (nivel extra ya hecho) |
 | launch | puzzle | Fin de la animación de despegue |
 | puzzle | map | Robot ensamblado (o "Saltar") + aterrizaje |
@@ -108,8 +108,8 @@ seed propio por piedra. El jugador debe razonar con el texto.
 
 | URL | Efecto |
 |---|---|
-| `?debug=allcomplete` | Marca los 4 robots armados y los 16 niveles (en memoria). Al ir a los podios se abre el nivel extra. |
-| `?debug=robot=lrv` | Arranca directo en el puzzle de ese robot (`lrv`, `lunokhod2`, `spirit`, `opportunity`). |
+| `?debug=allcomplete` | Marca los 3 robots armados y los 12 niveles (en memoria). Al ir a los podios se abre el nivel extra. |
+| `?debug=robot=lrv` | Arranca directo en el puzzle de ese robot (`lrv`, `spirit`, `opportunity`). |
 | `?debug=allcomplete,robot=spirit` | Ambos a la vez. |
 
 Nota: con `allcomplete` el estado no se guarda por sí solo, pero cualquier acción con

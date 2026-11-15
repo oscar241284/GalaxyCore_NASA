@@ -1,12 +1,4 @@
-/**
- * Piezas comunes de los juegos del Lunojod 2.
- *
- * Todas las misiones siguen el mismo patrón (ver docs/fundamentacion-diseno.md):
- * 1. Tarjeta de misión con UNA instrucción clara, que se puede escuchar en voz alta.
- * 2. Pregunta "¿Adivina?" antes de jugar (curiosidad: predecir y luego comprobar).
- * 3. Juego con una sola mecánica principal, sin cuenta regresiva que presione.
- * 4. Error = explicación + reintento, nunca castigo.
- */
+import { lang, locale, tr } from '../i18n';
 
 export interface Guess {
   q: string;
@@ -20,7 +12,6 @@ const CSS = `
   background: radial-gradient(ellipse 90% 70% at 70% 0%, #1a1238 0%, #07060f 70%); }
 .lk__wrap { width: min(1100px, 100%); margin: 0 auto; padding: 18px clamp(12px, 3vw, 28px) 28px; }
 
-/* tarjeta de misión */
 .lk-brief { display: grid; place-items: center; min-height: 100%; padding: 20px; }
 .lk-brief__card { width: min(620px, 100%); padding: 26px clamp(18px, 4vw, 32px); border: 2px solid var(--lk-accent, #ef4444); border-radius: 24px;
   background: linear-gradient(180deg, rgba(40,14,24,.92), rgba(16,10,30,.95)); box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 6px rgba(239,68,68,.12); }
@@ -32,7 +23,6 @@ const CSS = `
 .lk-brief__goal { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; font-size: 16px; font-weight: 700; background: rgba(103,232,249,.1); border: 1px solid rgba(103,232,249,.35); color: #a5f3fc; }
 .lk-brief__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
 
-/* pregunta "¿Adivina?" */
 .lk-guess { margin-top: 18px; padding: 16px; border-radius: 18px; background: #fbf7ff; color: #1a0b33; }
 .lk-guess__q { margin: 0 0 10px; font-size: 17px; font-weight: 800; }
 .lk-guess__q small { display: block; margin-bottom: 2px; font-family: var(--font-ui); font-size: 11px; letter-spacing: .16em; color: #7c3aed; }
@@ -46,7 +36,6 @@ const CSS = `
 .lk-guess__why { margin: 12px 0 0; font-size: 15px; line-height: 1.5; }
 .lk-guess__why b { color: #6d28d9; }
 
-/* botones */
 .lk-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border: 2px solid rgba(255,255,255,.18); border-radius: 16px; cursor: pointer;
   font: inherit; font-size: 15px; font-weight: 800; color: var(--fg); background: rgba(30,22,60,.85); box-shadow: 0 4px 0 rgba(0,0,0,.45); transition: transform .1s, border-color .2s, background .2s; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .lk-btn:hover:not(:disabled), .lk-btn:focus-visible { outline: none; border-color: #c084fc; background: rgba(50,32,96,.95); }
@@ -59,7 +48,6 @@ const CSS = `
 .lk-btn--on { border-color: #67e8f9; background: rgba(14,116,144,.6); }
 .lk-btn--small { min-height: 38px; padding: 6px 12px; font-size: 13px; border-radius: 12px; }
 
-/* barra superior de cada juego */
 .lk-top { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .lk-task { display: flex; gap: 10px; align-items: center; font-size: 16px; font-weight: 700; }
 .lk-task i { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-style: normal; font-weight: 900; color: #1a0b33; background: var(--lk-soft, #fca5a5); }
@@ -68,7 +56,6 @@ const CSS = `
 .lk-dots span.done { background: #34d399; border-color: #34d399; }
 .lk-dots span.now { border-color: var(--lk-soft, #fca5a5); box-shadow: 0 0 0 3px rgba(252,165,165,.25); }
 
-/* mensaje del centro de control */
 .lk-say { display: flex; gap: 10px; align-items: flex-start; min-height: 52px; margin: 12px 0 0; padding: 12px 14px; border-left: 4px solid #67e8f9; border-radius: 12px; font-size: 15px; line-height: 1.45; background: rgba(103,232,249,.08); }
 .lk-say b { flex: none; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; color: #67e8f9; padding-top: 3px; }
 .lk-say.ok { border-color: #34d399; background: rgba(52,211,153,.1); }
@@ -76,7 +63,6 @@ const CSS = `
 .lk-say.warn { border-color: #fbbf24; background: rgba(251,191,36,.1); }
 .lk-say.warn b { color: #fbbf24; }
 
-/* cierre con explicación */
 .lk-learn { margin-top: 14px; padding: 16px; border-radius: 16px; background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.4); font-size: 16px; line-height: 1.5; }
 .lk-learn h4 { margin: 0 0 6px; font-family: var(--font-ui); font-size: 14px; letter-spacing: .1em; color: #34d399; }
 
@@ -91,15 +77,14 @@ export function injectKit(): void {
   document.head.appendChild(s);
 }
 
-// ---------------------------------------------------------------- voz y sonidos
 const synth: SpeechSynthesis | undefined = typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : undefined;
 export const canSpeak = !!synth;
 export function speak(text: string): void {
   if (!synth) return;
   synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'es-ES';
-  const v = synth.getVoices().find((x) => x.lang.startsWith('es'));
+  u.lang = locale;
+  const v = synth.getVoices().find((x) => x.lang.startsWith(lang));
   if (v) u.voice = v;
   synth.speak(u);
 }
@@ -138,7 +123,6 @@ export function tone(f1: number, f2: number, d: number, type: OscillatorType = '
     o.start(t);
     o.stop(t + d + 0.02);
   } catch {
-    /* sin audio */
   }
 }
 export const sfx = {
@@ -161,18 +145,6 @@ export const ICON = {
   pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
 };
 
-/** Dibujo original del Lunojod (vista lateral): "bañera" con tapa y 8 ruedas. */
-export const LUNOKHOD_SVG = `
-<svg viewBox="0 0 220 130" aria-hidden="true">
-  <ellipse cx="110" cy="122" rx="92" ry="6" fill="rgba(0,0,0,.4)"/>
-  <rect x="40" y="16" width="5" height="34" fill="#9ca3af"/><circle cx="42" cy="14" r="6" fill="#d1d5db"/>
-  <path d="M30 52 h160 l-12 40 h-136 z" fill="#c9ccd3" stroke="#6b7280" stroke-width="3"/>
-  <path d="M26 50 q84 -34 168 0 z" fill="#1e3a8a" stroke="#93c5fd" stroke-width="3"/>
-  <circle cx="176" cy="70" r="7" fill="#111827" stroke="#9ca3af" stroke-width="2"/>
-  <circle cx="160" cy="70" r="5" fill="#111827" stroke="#9ca3af" stroke-width="2"/>
-  <rect x="44" y="92" width="132" height="6" rx="3" fill="#6b7280"/>
-  ${[52, 92, 132, 172].map((x) => `<circle cx="${x}" cy="106" r="15" fill="#374151" stroke="#d1d5db" stroke-width="3"/><circle cx="${x}" cy="106" r="5" fill="#9ca3af"/>`).join('')}
-</svg>`;
 
 interface BriefOpts {
   kicker: string;
@@ -180,37 +152,35 @@ interface BriefOpts {
   text: string;
   goal: string;
   art?: string;
-  /** colores del robot (por defecto, rojo del Lunojod) */
   accent?: string;
   soft?: string;
   guess: Guess;
   onStart: () => void;
 }
 
-/** Tarjeta de misión: texto corto + escuchar + "¿Adivina?" → ¡Empezar! */
 export function brief(root: HTMLElement, o: BriefOpts): void {
   root.innerHTML = `
     <div class="lk"${o.accent ? ` style="--lk-accent:${o.accent};--lk-soft:${o.soft ?? o.accent}"` : ''}><div class="lk-brief">
       <div class="lk-brief__card">
         <p class="lk-brief__kicker">${o.kicker}</p>
         <h3 class="lk-brief__title">${o.title}</h3>
-        <div class="lk-brief__art">${o.art ?? LUNOKHOD_SVG}</div>
+        <div class="lk-brief__art">${o.art ?? MER_SVG}</div>
         <p class="lk-brief__text">${o.text}</p>
         <p class="lk-brief__goal">🎯 <span>${o.goal}</span></p>
         <div class="lk-guess">
-          <p class="lk-guess__q"><small>¿ADIVINA?</small>${o.guess.q}</p>
+          <p class="lk-guess__q"><small>${tr('GUESS!', '¿ADIVINA?')}</small>${o.guess.q}</p>
           <div class="lk-guess__opts">${o.guess.options.map((t, i) => `<button type="button" data-i="${i}">${t}</button>`).join('')}</div>
           <p class="lk-guess__why" data-why hidden></p>
         </div>
         <div class="lk-brief__row">
-          <button type="button" class="lk-btn lk-btn--go" data-start disabled>${ICON.play}¡Empezar!</button>
-          ${canSpeak ? `<button type="button" class="lk-btn" data-listen>${ICON.speak}Escuchar</button>` : ''}
+          <button type="button" class="lk-btn lk-btn--go" data-start disabled>${ICON.play}${tr('Start!', '¡Empezar!')}</button>
+          ${canSpeak ? `<button type="button" class="lk-btn" data-listen>${ICON.speak}${tr('Listen', 'Escuchar')}</button>` : ''}
         </div>
       </div>
     </div></div>`;
   const startBtn = root.querySelector<HTMLButtonElement>('[data-start]')!;
   const why = root.querySelector<HTMLElement>('[data-why]')!;
-  const read = `${o.title}. ${o.text} ${o.goal}. ¿Adivina? ${o.guess.q}`;
+  const read = `${o.title}. ${o.text} ${o.goal}. ${tr('Guess!', '¿Adivina?')} ${o.guess.q}`;
   root.querySelector('[data-listen]')?.addEventListener('click', () => speak(why.hidden ? read : why.textContent ?? read));
   if (autoVoice()) speak(read);
   root.querySelectorAll<HTMLButtonElement>('.lk-guess__opts button').forEach((b) =>
@@ -223,7 +193,7 @@ export function brief(root: HTMLElement, o: BriefOpts): void {
       });
       (ok ? sfx.ok : sfx.soft)();
       why.hidden = false;
-      why.innerHTML = `<b>${ok ? '¡Bien pensado!' : '¡Casi!'}</b> ${o.guess.why}`;
+      why.innerHTML = `<b>${ok ? tr('Good thinking!', '¡Bien pensado!') : tr('Almost!', '¡Casi!')}</b> ${o.guess.why}`;
       if (autoVoice()) speak(why.textContent ?? '');
       startBtn.disabled = false;
       startBtn.focus();
@@ -236,21 +206,17 @@ export function brief(root: HTMLElement, o: BriefOpts): void {
   });
 }
 
-/** Puntos de progreso (etapa actual / total). */
-export const dots = (total: number, now: number, label = 'ETAPA') =>
+export const dots = (total: number, now: number, label = tr('STAGE', 'ETAPA')) =>
   `<span class="lk-dots">${label}&nbsp;${Array.from({ length: total }, (_, i) => `<span class="${i < now ? 'done' : i === now ? 'now' : ''}"></span>`).join('')}</span>`;
 
-/** Mensaje del centro de control (se puede leer en voz alta si el niño lo activó). */
 export function say(el: HTMLElement, text: string, kind: '' | 'ok' | 'warn' = '', who = 'CONTROL'): void {
   el.className = `lk-say${kind ? ` ${kind}` : ''}`;
   el.innerHTML = `<b>${who}</b><span>${text}</span>`;
   if (autoVoice()) speak(text);
 }
 
-/** Atributo de estilo con los colores de Spirit/Opportunity para el contenedor .lk */
 export const theme = (accent: string, soft: string) => ` style="--lk-accent:${accent};--lk-soft:${soft}"`;
 
-/** Dibujo original de un rover tipo MER (Spirit/Opportunity), vista lateral. */
 export const MER_SVG = `
 <svg viewBox="0 0 220 140" aria-hidden="true">
   <ellipse cx="110" cy="132" rx="96" ry="6" fill="rgba(0,0,0,.4)"/>

@@ -49,7 +49,7 @@ stateDiagram-v2
         reposo --> armadoTactil : 1er toque (táctil)
         armadoTactil --> foco
         reposo --> chequeoExtra : al montar
-        chequeoExtra : ¿16/16 y finalDone=false?
+        chequeoExtra : ¿12/12 y finalDone=false?
     }
 
     state "launch (3D)" as launch {
@@ -106,8 +106,8 @@ stateDiagram-v2
         celebracion --> compactar
         compactar : escena 3D al 80 %, franja de podios 62 %
         compactar --> piedras
-        piedras : 8 piedras barajadas (arrastre o Enter cicla)
-        piedras --> verificar : las 8 colocadas → Verificar
+        piedras : 6 piedras barajadas (arrastre o Enter cicla)
+        piedras --> verificar : las 6 colocadas → Verificar
         verificar : setFinalResult(correctas) [guarda]
         verificar --> revelar
         revelar : correcta/incorrecta + "Ver certificado"
@@ -119,7 +119,7 @@ stateDiagram-v2
     home --> podiums : INICIAR MISIÓN con nombre
     name --> podiums : EMPEZAR / Enter (setName [guarda])
     podiums --> launch : click / Enter en podio (DESCUBRIR)
-    podiums --> final : automático 50 ms si 16/16 y extra pendiente
+    podiums --> final : automático 50 ms si 12/12 y extra pendiente
     podiums --> certificate : "Ver certificado" (si finalDone)
     launch --> puzzle : fin del timeline de despegue
     puzzle --> map : fin del aterrizaje
@@ -136,21 +136,21 @@ stateDiagram-v2
         guardar : saveState() [guarda] + toast
         abierto --> confirmar : Reiniciar
         confirmar --> cerrado : Cancelar / Esc
-        abierto : "Misión completada: N %" · N/16 niveles · nivel extra bloqueado/desbloqueado/completado
+        abierto : "Misión completada: N %" · N/12 niveles · nivel extra bloqueado/desbloqueado/completado
     }
     confirmar --> home : Reiniciar confirmado (resetState [borra])
 
     note right of podiums
         Desbloqueo del nivel extra:
-        allLevelsDone() = levelsDone() >= 16
-        (4 robots × 4 niveles) y !finalDone
+        allLevelsDone() = levelsDone() >= 12
+        (3 robots × 4 niveles) y !finalDone
     end note
 
     note left of boot
         Flags de depuración (main.ts:13-22):
-        ?debug=allcomplete → 4 robots armados + 16 niveles en memoria
+        ?debug=allcomplete → 3 robots armados + 12 niveles en memoria
         ?debug=robot=ID → arranca en el puzzle
-        (lrv, lunokhod2, spirit, opportunity, acepta robot:ID)
+        (lrv, spirit, opportunity, acepta robot:ID)
         Combinables: ?debug=allcomplete,robot=spirit
     end note
 ```

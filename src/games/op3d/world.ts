@@ -1,15 +1,3 @@
-/**
- * Motor 3D común de los niveles de Opportunity (three.js / WebGL).
- *
- * - Terreno marciano procedimental (1 unidad = 1 m): llanura con ondulaciones, cráteres con
- *   borde elevado y textura de detalle con relieve. `heightAt(x, z)` da la altura exacta.
- * - Cielo con shader: color caramelo de día y halo AZUL alrededor del Sol (como en Marte),
- *   noche con estrellas, tormenta de polvo (oscurece y enrojece) — todo controlable.
- * - Sol con sombras suaves que siguen al rover, luz ambiente cálida, niebla de polvo.
- * - Polvo flotando, remolinos de polvo (dust devils) y rocas instanciadas.
- * - Rover Opportunity (modelo MER del proyecto) con ruedas que giran, inclinación según el
- *   terreno, paneles que se ensucian y conducción con teclado o joystick táctil.
- */
 import {
   ACESFilmicToneMapping,
   AdditiveBlending,
@@ -63,15 +51,11 @@ export interface WorldOpts {
   seed?: number;
   craters?: Crater[];
   rocks?: number;
-  /** amplitud de las lomas suaves (m) */
   hills?: number;
-  /** zonas donde no poner rocas */
   clear?: { x: number; z: number; r: number }[];
 }
 
-// ---------------------------------------------------------------- texturas
 function detailTexture(): CanvasTexture {
-  // textura repetible sin costuras: manchas y piedritas dibujadas también en los bordes opuestos
   const S = 512;
   const c = document.createElement('canvas');
   c.width = c.height = S;
@@ -130,19 +114,18 @@ function dotTexture(): CanvasTexture {
   return new CanvasTexture(c);
 }
 
-// ---------------------------------------------------------------- cielo
 const SKY_VERT = `
 varying vec3 vDir;
 void main() {
   vDir = normalize(position);
   vec4 p = modelViewMatrix * vec4(position, 1.0);
   gl_Position = projectionMatrix * p;
-  gl_Position.z = gl_Position.w; // siempre al fondo
+  gl_Position.z = gl_Position.w;
 }`;
 const SKY_FRAG = `
 uniform vec3 sunDir;
-uniform float day;     // 0 noche · 1 día
-uniform float storm;   // 0 claro · 1 tormenta total
+uniform float day;
+uniform float storm;
 varying vec3 vDir;
 float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
 void main() {
@@ -152,15 +135,12 @@ void main() {
   vec3 horizon = vec3(0.86, 0.66, 0.46);
   vec3 col = mix(horizon, zenith, pow(max(h, 0.0), 0.55));
   float s = max(dot(d, normalize(sunDir)), 0.0);
-  // en Marte el polvo hace que la luz cerca del Sol se vea AZUL
   vec3 blue = vec3(0.45, 0.62, 0.85);
   float sunLow = 1.0 - clamp(sunDir.y * 2.0, 0.0, 1.0);
   col = mix(col, blue, pow(s, 6.0) * (0.35 + 0.45 * sunLow) * (1.0 - storm));
   col += vec3(1.0, 0.97, 0.9) * pow(s, 900.0) * 6.0 * (1.0 - storm * 0.9);
   col += vec3(1.0, 0.9, 0.75) * pow(s, 60.0) * 0.35 * (1.0 - storm);
-  // tormenta: oscuro y rojizo
   col = mix(col, vec3(0.52, 0.31, 0.17) * (0.4 + 0.6 * day), storm * 0.85);
-  // noche
   vec3 night = vec3(0.012, 0.012, 0.03);
   float st = step(0.9965, hash(floor(d * 420.0))) * smoothstep(0.0, 0.3, d.y) * (1.0 - storm);
   night += vec3(st);
@@ -168,7 +148,6 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-// ---------------------------------------------------------------- mundo
 export interface World {
   renderer: WebGLRenderer;
   scene: Scene;
@@ -176,7 +155,6 @@ export interface World {
   sun: DirectionalLight;
   heightAt: (x: number, z: number) => number;
   normalAt: (x: number, z: number) => Vector3;
-  /** 0–1 hora del día (0,25 amanecer · 0,5 mediodía · 0,75 atardecer) */
   setTime: (t: number) => void;
   setStorm: (k: number) => void;
   dust: { setAmount: (k: number) => void; update: (dt: number, center: Vector3) => void };
@@ -222,14 +200,13 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
   scene.fog = new FogExp2(fogColor, 0.0045);
   const camera = new PerspectiveCamera(55, 1, 0.1, 1200);
 
-  // ---------- altura ----------
   const nH = makeNoise(seed * 7 + 1);
   const nR = makeNoise(seed * 13 + 2);
   const hills = o.hills ?? 2.2;
   const heightAt = (x: number, z: number): number => {
     let h = (fbm(nH, x / 70 + 50, z / 70 + 50, 4) - 0.5) * hills * 2;
     h += (fbm(nR, x / 9 + 10, z / 9 + 10, 2) - 0.5) * 0.35;
-    h += Math.sin(x * 0.35 + Math.sin(z * 0.05) * 3) * 0.06; // ondulaciones de arena
+    h += Math.sin(x * 0.35 + Math.sin(z * 0.05) * 3) * 0.06;
     for (const c of craters) {
       const d = Math.hypot(x - c.x, z - c.z) / c.r;
       const rim = c.rim ?? c.depth * 0.35;
@@ -245,7 +222,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     return new Vector3(-hx, 2 * e, -hz).normalize();
   };
 
-  // ---------- terreno ----------
   const geo = new PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position as BufferAttribute;
@@ -262,7 +238,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     pos.setY(i, y);
     const k = fbm(nC, x / 40, z / 40, 3);
     tmp.copy(base).lerp(k > 0.5 ? light : dark, Math.abs(k - 0.5) * 1.3);
-    // fondo de cráteres más oscuro (arena acumulada)
     for (const c of craters) {
       const d = Math.hypot(x - c.x, z - c.z) / c.r;
       if (d < 0.8) tmp.lerp(dark, (0.8 - d) * 0.5);
@@ -281,7 +256,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // ---------- colinas lejanas (horizonte) ----------
   {
     const hillGeo = new PlaneGeometry(size * 3.2, size * 3.2, 120, 120);
     hillGeo.rotateX(-Math.PI / 2);
@@ -301,7 +275,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     scene.add(hill);
   }
 
-  // ---------- rocas ----------
   const rockGeo = new IcosahedronGeometry(1, 1);
   const rp = rockGeo.attributes.position as BufferAttribute;
   const rr = rng(seed + 99);
@@ -333,7 +306,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
   rocks.count = placed;
   scene.add(rocks);
 
-  // ---------- cielo ----------
   const skyMat = new ShaderMaterial({
     vertexShader: SKY_VERT,
     fragmentShader: SKY_FRAG,
@@ -345,7 +317,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
   const sky = new Mesh(new SphereGeometry(900, 32, 16), skyMat);
   scene.add(sky);
 
-  // ---------- luces ----------
   const hemi = new HemisphereLight('#f3c9a0', '#6b3a22', 0.9);
   scene.add(hemi);
   const sun = new DirectionalLight('#fff1dc', 2.6);
@@ -374,7 +345,7 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     renderer.toneMappingExposure = 1.05 + stormK * 0.25;
   };
   const setTime = (t: number) => {
-    const a = (t - 0.25) * Math.PI * 2; // 0 al amanecer
+    const a = (t - 0.25) * Math.PI * 2;
     sunDir = new Vector3(Math.cos(a) * 0.85, Math.sin(a), 0.35).normalize();
     skyMat.uniforms.sunDir.value.copy(sunDir);
     dayK = MathUtils.clamp(sunDir.y * 4 + 0.15, 0, 1);
@@ -387,7 +358,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     applyLight();
   };
 
-  // ---------- polvo flotando ----------
   const dot = dotTexture();
   const DN = 900;
   const dPos = new Float32Array(DN * 3);
@@ -429,12 +399,11 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     },
   };
 
-  // ---------- remolinos de polvo ----------
   const devils: DustDevil[] = [];
   const addDevil = (x: number, z: number): DustDevil => {
     const N = 700;
     const p = new Float32Array(N * 3);
-    const meta = new Float32Array(N * 3); // ángulo, altura, radio
+    const meta = new Float32Array(N * 3);
     for (let i = 0; i < N; i++) {
       meta[i * 3] = Math.random() * Math.PI * 2;
       meta[i * 3 + 1] = Math.random() * 22;
@@ -475,7 +444,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     return dev;
   };
 
-  // ---------- bucle ----------
   const resize = () => {
     const w = host.clientWidth || 1;
     const h = host.clientHeight || 1;
@@ -493,7 +461,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
   let last = performance.now();
   let tt = 0;
   let running = false;
-  // calidad adaptativa: si el equipo va lento, baja resolución y sombras
   let quality = 2;
   let ftSum = 0;
   let ftN = 0;
@@ -529,7 +496,6 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
     tt += dt;
     if (tt > 1) adapt(raw);
     for (const f of frameFns) f(dt, tt);
-    // la sombra sigue a la cámara
     const target = new Vector3();
     camera.getWorldDirection(target);
     const focus = camera.position.clone().addScaledVector(target, 12);
@@ -580,12 +546,11 @@ export function createWorld(host: HTMLElement, o: WorldOpts = {}): World | null 
   };
 }
 
-// ---------------------------------------------------------------- rover
 export interface Rover {
   group: Group;
   x: number;
   z: number;
-  heading: number; // radianes; 0 = mirando a +Z
+  heading: number;
   speed: number;
   setDust: (k: number) => void;
   update: (dt: number, throttle: number, steer: number, blocked?: (x: number, z: number) => boolean) => void;
@@ -595,7 +560,6 @@ export interface Rover {
 export function createRover(world: World, x = 0, z = 0, heading = 0): Rover {
   const model = buildMER('opportunity', '#f59e0b');
   const group = new Group();
-  // el modelo mide ~1,6 m: lo dejamos a escala real
   model.group.scale.setScalar(1.15);
   group.add(model.group);
   group.traverse((o) => {
@@ -605,7 +569,6 @@ export function createRover(world: World, x = 0, z = 0, heading = 0): Rover {
       m.receiveShadow = true;
     }
   });
-  // paneles propios (para ensuciarlos sin afectar otros robots)
   const panelMats: MeshStandardMaterial[] = [];
   const clean = new Color('#1d2b5e');
   const dirty = new Color('#a0623a');
@@ -619,7 +582,6 @@ export function createRover(world: World, x = 0, z = 0, heading = 0): Rover {
       panelMats.push(c);
     }
   });
-  // ruedas: grupos dentro de wheelsLeft/wheelsRight
   const wheels: Object3D[] = [];
   model.pieces.forEach((p) => {
     if (p.name === 'wheelsLeft' || p.name === 'wheelsRight') p.children.forEach((c) => c.type === 'Group' && wheels.push(c));
@@ -641,7 +603,6 @@ export function createRover(world: World, x = 0, z = 0, heading = 0): Rover {
     place: () => {
       const y = world.heightAt(rover.x, rover.z);
       group.position.set(rover.x, y, rover.z);
-      // inclinación según el terreno (promedio de normales bajo el rover)
       const n = world.normalAt(rover.x, rover.z);
       const up = new Vector3(0, 1, 0);
       const tilt = new Quaternion().setFromUnitVectors(up, n);
@@ -668,7 +629,6 @@ export function createRover(world: World, x = 0, z = 0, heading = 0): Rover {
   return rover;
 }
 
-/** Cámara en tercera persona que sigue al rover (arrastrar = girar la vista). */
 export function followCam(world: World, getTarget: () => { x: number; z: number; heading: number }, host: HTMLElement) {
   let yawOff = 0;
   let dist = 7.5;
@@ -728,14 +688,12 @@ export function followCam(world: World, getTarget: () => { x: number; z: number;
   };
 }
 
-// ---------------------------------------------------------------- controles
 export interface Controls {
   throttle: number;
   steer: number;
   dispose: () => void;
 }
 
-/** Teclado (flechas / WASD) + joystick táctil en pantalla. */
 export function createControls(joyHost: HTMLElement): Controls {
   const keys = new Set<string>();
   const c: Controls = { throttle: 0, steer: 0, dispose: () => {} };
@@ -806,7 +764,6 @@ export function createControls(joyHost: HTMLElement): Controls {
   return c;
 }
 
-/** Estilos comunes de la interfaz 3D (HUD sobre el canvas). */
 export const OP_CSS = `
 .op { position: absolute; inset: 0; overflow: hidden; background: #120a06; color: #fff; }
 .op__canvas { position: absolute; inset: 0; }

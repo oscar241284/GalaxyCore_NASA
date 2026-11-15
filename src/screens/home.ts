@@ -1,29 +1,10 @@
-/**
- * HOME: portada 3D de GalaxyCore con Bip, el robot guía.
- *
- * Decisiones basadas en evidencia (detalle en docs/fundamentacion-diseno.md):
- * - UN FOCO (Talalay 2024, P01 / UI02): el botón JUGAR es la acción principal y dice cuál es
- *   la siguiente misión. Los "3 pasos" solo se muestran a quien empieza. "No soy…" pasó a Ajustes.
- * - ANIMACIÓN FUNCIONAL (UI03 / Hinten 2025, P11): nada se mueve en bucle infinito; los planetas
- *   solo se mueven cuando el niño los toca. Modo "Menos movimiento" en Ajustes.
- * - CURIOSIDAD (P02, P03, P04): al tocar un planeta, Bip primero pregunta ("¿Adivina?") y luego
- *   explica. El error se responde con "¡Casi!" + explicación (feedback D05, sin humillar).
- * - MODELO Y COMPARACIÓN (Cheng & Yeh 2026, P13; Jin 2025, P14): "Comparar tamaños" coloca la
- *   Tierra, Marte y la Luna a su tamaño real relativo en 3D, y abre gravedad y saltos.
- * - COLECCIÓN (RITEC 2024, G07): los 4 robots son un álbum. Los que faltan aparecen en silueta
- *   "Por armar" y se desbloquean aprendiendo, nunca al azar ni pagando (OCDE 2026, SAF01).
- * - PERSONALIZACIÓN OPCIONAL (RITEC 2024, D03/V04): el niño elige el color de Bip; no da ventajas.
- * - COLOR SEMÁNTICO (Zheng 2025, C03): Tierra = azul, Marte = naranja, Luna = plata en etiquetas,
- *   colección y comparador. El dorado (Baniani 2022, C02) se usa solo como acento de logros.
- *   El progreso nunca depende solo del color: estrellas + "2/4".
- * - VOZ (CONCORTV 2024, F01): todo mensaje se puede escuchar; opción de voz automática.
- * - EDAD (base §5.7, hipótesis): textos cortos por defecto; "Más datos (9–12 años)" añade detalle.
- * - SEGURIDAD (OCDE 2026, CyberSafeKids 2026): sin compras, chat ni anuncios; panel para adultos.
- */
 import gsap from 'gsap';
+import { exIcon } from '../data/explorerIcons';
 import {
   AdditiveBlending,
   AmbientLight,
+  Color,
+  ShaderMaterial,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
@@ -51,10 +32,10 @@ import { ALL_ROBOTS, getState, levelsDone, TOTAL_LEVELS } from '../store';
 import { ROBOTS } from '../data/robots';
 import { esc, openModal } from '../ui/modal';
 import { createMoonMaps, fbm, makeNoise, rng } from '../ui/moonTexture';
+import { locale, tr } from '../i18n';
 
 type Planet = 'moon' | 'mars' | 'earth';
 
-/** Colores semánticos: el mismo color significa lo mismo en toda la portada. */
 const PLANET_COLOR: Record<Planet, string> = { earth: '#3b82f6', mars: '#f97316', moon: '#cbd5e1' };
 
 interface Guess {
@@ -62,100 +43,87 @@ interface Guess {
   options: string[];
   correct: number;
   why: string;
-  /** Detalle extra solo en modo "Más datos (9–12 años)". */
   more?: string;
 }
 
 const PLANET_INFO: Record<Planet, { label: string; km: string; guess: Guess }> = {
   moon: {
-    label: 'La Luna',
-    km: '3.474 km',
+    label: tr('The Moon', 'La Luna'),
+    km: tr('3,474 km', '3.474 km'),
     guess: {
-      q: '¿Hay viento en la Luna?',
-      options: ['Sí, mucho', 'No, nada'],
+      q: tr('Is there wind on the Moon?', '¿Hay viento en la Luna?'),
+      options: [tr('Yes, a lot', 'Sí, mucho'), tr('No, none', 'No, nada')],
       correct: 1,
-      why: 'No hay aire ni viento. Por eso las huellas de los astronautas siguen ahí. Aquí trabajaron el LRV y el Lunojod 2.',
-      more: 'Está a unos 384.000 km de la Tierra y su gravedad es 6 veces más débil.',
+      why: tr('There is no air and no wind. That is why the astronauts\' footprints are still there. The LRV worked here.', 'No hay aire ni viento. Por eso las huellas de los astronautas siguen ahí. Aquí trabajó el LRV.'),
+      more: tr('It is about 384,000 km from Earth and its gravity is 6 times weaker.', 'Está a unos 384.000 km de la Tierra y su gravedad es 6 veces más débil.'),
     },
   },
   mars: {
-    label: 'Marte',
-    km: '6.779 km',
+    label: tr('Mars', 'Marte'),
+    km: tr('6,779 km', '6.779 km'),
     guess: {
-      q: '¿Por qué Marte se ve rojo?',
-      options: ['Por su suelo oxidado', 'Porque es muy caliente'],
+      q: tr('Why does Mars look red?', '¿Por qué Marte se ve rojo?'),
+      options: [tr('Because its soil is rusty', 'Por su suelo oxidado'), tr('Because it is very hot', 'Porque es muy caliente')],
       correct: 0,
-      why: 'Su suelo tiene óxido de hierro, como un clavo oxidado. ¡Y es muy frío! Aquí exploraron Spirit y Opportunity.',
-      more: 'Un día en Marte dura casi 24 horas y 40 minutos, y se llama "sol".',
+      why: tr('Its soil has iron oxide, like a rusty nail. And it is very cold! Spirit and Opportunity explored here.', 'Su suelo tiene óxido de hierro, como un clavo oxidado. ¡Y es muy frío! Aquí exploraron Spirit y Opportunity.'),
+      more: tr('A day on Mars lasts almost 24 hours and 40 minutes, and it is called a "sol".', 'Un día en Marte dura casi 24 horas y 40 minutos, y se llama "sol".'),
     },
   },
   earth: {
-    label: 'La Tierra',
-    km: '12.742 km',
+    label: tr('Earth', 'La Tierra'),
+    km: tr('12,742 km', '12.742 km'),
     guess: {
-      q: '¿Qué es más grande: la Tierra o Marte?',
-      options: ['La Tierra', 'Marte'],
+      q: tr('Which is bigger: Earth or Mars?', '¿Qué es más grande: la Tierra o Marte?'),
+      options: [tr('Earth', 'La Tierra'), tr('Mars', 'Marte')],
       correct: 0,
-      why: 'La Tierra mide casi el doble que Marte. Toca «Comparar tamaños» para verlo.',
-      more: 'Desde la Tierra, los equipos de la misión enviaban órdenes a los robots.',
+      why: tr('Earth is almost twice as big as Mars. Tap «Sizes» to see it.', 'La Tierra mide casi el doble que Marte. Toca «Comparar tamaños» para verlo.'),
+      more: tr('From Earth, the mission teams sent commands to the robots.', 'Desde la Tierra, los equipos de la misión enviaban órdenes a los robots.'),
     },
   },
 };
 
-/** Preguntas de predicción generales (botón ¿Adivina?). */
 const GUESSES: Guess[] = [
   {
-    q: '¿Dónde saltarías más alto?',
-    options: ['En la Tierra', 'En la Luna'],
+    q: tr('Where would you jump higher?', '¿Dónde saltarías más alto?'),
+    options: [tr('On Earth', 'En la Tierra'), tr('On the Moon', 'En la Luna')],
     correct: 1,
-    why: 'En la Luna la gravedad es 6 veces más débil. ¡Darías saltos gigantes!',
-    more: 'Si saltas 1 metro en la Tierra, en la Luna saltarías unos 6 metros.',
+    why: tr('On the Moon gravity is 6 times weaker. You would make giant jumps!', 'En la Luna la gravedad es 6 veces más débil. ¡Darías saltos gigantes!'),
+    more: tr('If you jump 1 meter on Earth, on the Moon you would jump about 6 meters.', 'Si saltas 1 metro en la Tierra, en la Luna saltarías unos 6 metros.'),
   },
   {
-    q: '¿Cómo se cargaban Spirit y Opportunity?',
-    options: ['Con gasolina', 'Con la luz del Sol'],
+    q: tr('How did Spirit and Opportunity get their power?', '¿Cómo se cargaban Spirit y Opportunity?'),
+    options: [tr('With gasoline', 'Con gasolina'), tr('With sunlight', 'Con la luz del Sol')],
     correct: 1,
-    why: 'Usaban paneles solares. ¡A veces el viento de Marte les limpiaba el polvo!',
+    why: tr('They used solar panels. Sometimes the Martian wind cleaned the dust off them!', 'Usaban paneles solares. ¡A veces el viento de Marte les limpiaba el polvo!'),
   },
   {
-    q: '¿Las huellas en la Luna siguen ahí?',
-    options: ['Sí, siguen', 'No, se borraron'],
+    q: tr('Are the footprints on the Moon still there?', '¿Las huellas en la Luna siguen ahí?'),
+    options: [tr('Yes, they are', 'Sí, siguen'), tr('No, they were erased', 'No, se borraron')],
     correct: 0,
-    why: 'En la Luna no hay viento ni lluvia, así que las huellas duran muchísimo tiempo.',
+    why: tr('On the Moon there is no wind or rain, so footprints last a very, very long time.', 'En la Luna no hay viento ni lluvia, así que las huellas duran muchísimo tiempo.'),
   },
   {
-    q: '¿Quién manejaba el Lunojod 2?',
-    options: ['Un equipo desde la Tierra', 'Un astronauta sentado'],
+    q: tr('How long was Opportunity supposed to last on Mars?', '¿Cuánto iba a durar Opportunity en Marte?'),
+    options: [tr('90 days', '90 días'), tr('15 years', '15 años')],
     correct: 0,
-    why: 'Lo manejaban a control remoto desde la Tierra. ¡Las órdenes tardaban en llegar!',
-    more: 'La señal de radio tarda más de 1 segundo en ir de la Tierra a la Luna.',
-  },
-  {
-    q: '¿Cuánto iba a durar Opportunity en Marte?',
-    options: ['90 días', '15 años'],
-    correct: 0,
-    why: 'Lo planearon para unos 90 días… ¡y trabajó casi 15 años!',
+    why: tr('It was planned for about 90 days… and it worked for almost 15 years!', 'Lo planearon para unos 90 días… ¡y trabajó casi 15 años!'),
   },
 ];
 
-/** Ficha de colección de cada robot (texto corto). */
 const ROBOT_FACT: Record<RobotId, string> = {
-  lrv: 'El LRV fue el auto de los astronautas del Apolo 15, en 1971. ¡Lo manejaban sentados en la Luna!',
-  lunokhod2: 'El Lunojod 2 era un robot manejado a distancia desde la Tierra. Recorrió unos 40 km en la Luna.',
-  spirit: 'Spirit llegó a Marte en 2004 y buscó pistas de agua antigua en las rocas.',
-  opportunity: 'Opportunity iba a durar 90 días… ¡y exploró Marte durante casi 15 años!',
+  lrv: tr('The LRV was the Apollo 15 astronauts\' car, in 1971. They drove it sitting down on the Moon!', 'El LRV fue el auto de los astronautas del Apolo 15, en 1971. ¡Lo manejaban sentados en la Luna!'),
+  spirit: tr('Spirit reached Mars in 2004 and searched the rocks for clues of ancient water.', 'Spirit llegó a Marte en 2004 y buscó pistas de agua antigua en las rocas.'),
+  opportunity: tr('Opportunity was meant to last 90 days… and it explored Mars for almost 15 years!', 'Opportunity iba a durar 90 días… ¡y exploró Marte durante casi 15 años!'),
 };
 
-/** Colores de Bip que el niño puede elegir (personalización opcional, sin ventajas). */
 const BIP_COLORS: { id: string; label: string; a: string; b: string; c: string }[] = [
-  { id: 'lila', label: 'Lila', a: '#f5f3ff', b: '#c4b5fd', c: '#7c3aed' },
-  { id: 'celeste', label: 'Celeste', a: '#ecfeff', b: '#67e8f9', c: '#0e7490' },
-  { id: 'verde', label: 'Verde', a: '#f0fdf4', b: '#86efac', c: '#15803d' },
-  { id: 'naranja', label: 'Naranja', a: '#fff7ed', b: '#fdba74', c: '#c2410c' },
-  { id: 'amarillo', label: 'Amarillo', a: '#fefce8', b: '#fde047', c: '#a16207' },
+  { id: 'lila', label: tr('Lilac', 'Lila'), a: '#f5f3ff', b: '#c4b5fd', c: '#7c3aed' },
+  { id: 'celeste', label: tr('Sky blue', 'Celeste'), a: '#ecfeff', b: '#67e8f9', c: '#0e7490' },
+  { id: 'verde', label: tr('Green', 'Verde'), a: '#f0fdf4', b: '#86efac', c: '#15803d' },
+  { id: 'naranja', label: tr('Orange', 'Naranja'), a: '#fff7ed', b: '#fdba74', c: '#c2410c' },
+  { id: 'amarillo', label: tr('Yellow', 'Amarillo'), a: '#fefce8', b: '#fde047', c: '#a16207' },
 ];
 
-// ---------------------------------------------------------------- preferencias
 const pref = (key: string, def: boolean): boolean => {
   try {
     const v = localStorage.getItem(key);
@@ -168,7 +136,6 @@ const savePref = (key: string, v: boolean | string) => {
   try {
     localStorage.setItem(key, typeof v === 'string' ? v : v ? 'on' : 'off');
   } catch {
-    /* sin almacenamiento */
   }
 };
 const readStr = (key: string, def: string): string => {
@@ -184,7 +151,6 @@ let calm = pref('novacore:calm', false);
 let moreData = pref('novacore:more-data', false);
 let bipColor = readStr('novacore:bip-color', 'lila');
 
-// ---------------------------------------------------------------- estilos
 const CSS = `
 .kid {
   position: relative; min-height: 100vh; min-height: 100dvh; overflow: hidden; isolation: isolate;
@@ -226,7 +192,6 @@ const CSS = `
 .kid__title-main span { display: inline-block; background: inherit; -webkit-background-clip: text; background-clip: text; color: transparent; }
 .kid__title-sub { display: inline-block; margin-top: 8px; padding: 6px 14px; border-radius: 999px; font-size: clamp(12px, 1.3vw, 15px); font-weight: 700; letter-spacing: .2em; color: #1a0b33; background: linear-gradient(90deg, #67e8f9, #c084fc); }
 
-/* ---- Bip + globo ---- */
 .kid__guide { display: flex; align-items: flex-end; gap: 14px; }
 .bip { --bip-a: #f5f3ff; --bip-b: #c4b5fd; --bip-c: #7c3aed;
   position: relative; flex: none; width: clamp(92px, 10vw, 124px); cursor: pointer; border: 0; padding: 0; background: none; animation: bip-float 3.2s ease-in-out 3; }
@@ -261,7 +226,6 @@ const CSS = `
 .bubble__btn svg { width: 16px; height: 16px; }
 .bubble__btn.speaking { background: #ede9fe; }
 
-/* respuestas de "¿Adivina?" (icono + texto, no solo color) */
 .guess { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .guess[hidden] { display: none; }
 .bubble:has(.guess:not([hidden])) { padding-bottom: 36px; }
@@ -272,7 +236,6 @@ const CSS = `
 .guess button.no { opacity: .55; }
 .guess button:disabled { cursor: default; transform: none; }
 
-/* ---- acción principal ---- */
 .kid__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
 .kid__play {
   position: relative; display: inline-flex; align-items: center; gap: 14px; overflow: hidden; cursor: pointer;
@@ -291,8 +254,9 @@ const CSS = `
 .kid__next small { font-size: 11px; font-weight: 800; letter-spacing: .14em; color: #86efac; }
 .kid__next b { font-size: 16px; }
 
-/* ---- barra secundaria ---- */
-.kid__tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.kid__tools { display: flex; flex-wrap: wrap; gap: 8px; max-width: 600px; }
+.kid__ex-ico { width: 20px; height: 20px; stroke-width: 3; color: #c4b5fd; }
+.kid__tool--ghost { border-color: #c4b5fd !important; box-shadow: 0 0 14px rgba(196,181,253,.45); }
 .kid__tool {
   display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 2px solid rgba(255,255,255,.14); border-radius: 999px; cursor: pointer;
   font: inherit; font-size: 14px; font-weight: 700; color: var(--fg); background: rgba(20,14,44,.7); transition: border-color .2s, background .2s, transform .15s;
@@ -302,14 +266,12 @@ const CSS = `
 .kid__tool svg { width: 18px; height: 18px; flex: none; }
 .kid__tool[hidden] { display: none; }
 
-/* ---- cómo se juega (solo al empezar) ---- */
 .kid__steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0; padding: 0; list-style: none; max-width: 580px; }
 .kid__step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; font-size: 14px; font-weight: 600; line-height: 1.25; color: var(--fg); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
 .kid__step i { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; font-style: normal; }
 .kid__step i svg { width: 22px; height: 22px; }
 .kid__step small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--muted); }
 
-/* ---- colección de robots ---- */
 .kid__album h2 { margin: 0 0 8px; font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .16em; color: var(--muted); }
 .kid__album h2 b { color: #fde68a; font-weight: 700; }
 .kid__robots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; max-width: 600px; }
@@ -319,9 +281,9 @@ const CSS = `
   transition: transform .25s var(--ease-spring), border-color .2s, background .2s;
 }
 .kid__robot:hover, .kid__robot:focus-visible { outline: none; transform: translateY(-5px); border-color: var(--b); background: rgba(30,20,64,.92); }
-.kid__robot svg { width: 56px; height: 40px; margin: 0 auto 4px; display: block; }
+.kid__robot-ico svg { width: 46px; height: 46px; margin: 0 auto 2px; display: block; stroke-width: 2.4; }
 .kid__robot--locked { border-style: dashed; }
-.kid__robot--locked svg { filter: grayscale(1) brightness(.45); }
+.kid__robot--locked .kid__robot-ico { color: #64748b !important; opacity: .55; }
 .kid__robot-name { display: block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; line-height: 1.25; min-height: 2.5em; }
 .kid__robot-place { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #1a0b33; background: var(--b); }
 .kid__robot-stars { display: block; font-size: 15px; letter-spacing: 1px; color: rgba(255,255,255,.18); }
@@ -330,7 +292,6 @@ const CSS = `
 .kid__robot-badge { position: absolute; top: -9px; right: -6px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; color: #04140b; background: var(--ok); transform: rotate(6deg); }
 .kid__robot-badge--lock { color: #e2e8f0; background: #334155; transform: none; }
 
-/* ---- ajustes ---- */
 .kid__pop {
   position: absolute; z-index: 8; width: min(320px, calc(100vw - 28px)); padding: 14px; border: 2px solid #c084fc; border-radius: 20px;
   color: var(--fg); background: #140e2c; box-shadow: 0 18px 40px rgba(0,0,0,.6);
@@ -346,7 +307,6 @@ const CSS = `
 .kid__pop .sw button[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px #c084fc; }
 .kid__pop .lbl { display: block; margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--muted); }
 
-/* comparador (Museo) */
 .kid-cmp { display: grid; gap: 16px; }
 .kid-cmp h4 { margin: 0 0 8px; font-family: var(--font-ui); font-size: 13px; letter-spacing: .08em; color: var(--accent-3); }
 .kid-cmp__row { display: grid; grid-template-columns: 64px 1fr 116px; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 14px; }
@@ -366,7 +326,6 @@ const CSS = `
   background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.9)); transform: rotate(-28deg); opacity: 0; animation: kid-meteor 1.1s ease-out forwards; }
 @keyframes kid-meteor { 0% { opacity: 0; translate: 0 0; } 15% { opacity: 1; } 100% { opacity: 0; translate: -420px 220px; } }
 
-/* menos movimiento */
 .kid--calm .bip, .kid--calm .bip__arm, .kid--calm .kid__play, .kid--calm .kid__label svg, .kid--calm .kid-cmp__bar s { animation: none !important; }
 .kid--calm .kid__robot:hover, .kid--calm .kid__tool:hover { transform: none; }
 
@@ -400,7 +359,6 @@ function injectStyles(): void {
   document.head.appendChild(s);
 }
 
-// ---------------------------------------------------------------- sonidos
 let audio: AudioContext | null = null;
 function tone(f1: number, f2: number, d: number, type: OscillatorType = 'sine', vol = 0.06, delay = 0): void {
   if (!soundOn) return;
@@ -420,7 +378,6 @@ function tone(f1: number, f2: number, d: number, type: OscillatorType = 'sine', 
     o.start(t);
     o.stop(t + d + 0.02);
   } catch {
-    /* sin audio */
   }
 }
 const sfx = {
@@ -438,7 +395,6 @@ const sfx = {
   go: () => [523, 659, 784].forEach((f, i) => tone(f, f * 1.01, 0.2, 'triangle', 0.07, i * 0.08)),
 };
 
-// ---------------------------------------------------------------- texturas
 function createEarthTexture(): HTMLCanvasElement {
   const w = 1024;
   const h = 512;
@@ -524,14 +480,11 @@ function glowTexture(color: string): HTMLCanvasElement {
   return c;
 }
 
-// ---------------------------------------------------------------- escena 3D tocable
 interface Space {
-  /** Coloca los 3 cuerpos a su tamaño real relativo (modelo) o vuelve a la vista normal. */
   compare(on: boolean): void;
   destroy(): void;
 }
 
-/** Diámetros relativos a la Tierra (datos reales). */
 const REAL_SIZE: Record<Planet, number> = { earth: 1, mars: 6779 / 12742, moon: 3474 / 12742 };
 
 function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Planet) => void): Space | null {
@@ -553,9 +506,8 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
   const sun = new DirectionalLight(0xfff4e6, 3.2);
   sun.position.set(-6, 1.8, 2.4);
   scene.add(sun);
-  scene.add(new AmbientLight(0x8a96ff, 0.07));
+  scene.add(new AmbientLight(0x8a96ff, 0.14));
 
-  // estrellas (menos que antes: fondo tranquilo)
   const rand = rng(42);
   const N = 1400;
   const pos = new Float32Array(N * 3);
@@ -605,12 +557,36 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
     scene.add(group);
     return { group, mesh, mat, halo };
   };
+  const SUN_DIR = new Vector3(-6, 1.8, 2.4).normalize();
+  const addAtmosphere = (pl: { group: Group }, color: string, power: number, strength: number, size = 1.035) => {
+    const g = new SphereGeometry(size, 64, 48);
+    geos.push(g);
+    const m = new ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      uniforms: { uColor: { value: new Color(color) }, uSun: { value: SUN_DIR }, uPow: { value: power }, uStr: { value: strength } },
+      vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vW;
+        void main(){ vN = normalize(normalMatrix * normal); vW = normalize(mat3(modelMatrix) * normal);
+          vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform vec3 uColor; uniform vec3 uSun; uniform float uPow; uniform float uStr;
+        varying vec3 vN; varying vec3 vV; varying vec3 vW;
+        void main(){ float f = pow(1.0 - max(dot(vN, vV), 0.0), uPow);
+          float lit = smoothstep(-0.35, 0.6, dot(vW, uSun));
+          gl_FragColor = vec4(uColor * f * uStr * (0.15 + lit), f * lit); }`,
+    });
+    mats.push(m);
+    pl.group.add(new Mesh(g, m));
+  };
 
   const moon = makePlanet(createMoonMaps(1024), 2.4, 'rgba(190,170,255,0.35)', 3.1);
   moon.mesh.rotation.set(0.12, -0.6, 0.08);
   const mars = makePlanet(createMarsMaps(), 2, 'rgba(255,140,90,0.45)', 3.1);
   const earth = makePlanet({ color: createEarthTexture() }, 0, 'rgba(96,165,250,0.6)', 2.6);
   earth.mat.roughness = 0.75;
+  addAtmosphere(earth, '#5fb4ff', 2.4, 2.2, 1.05);
+  addAtmosphere(mars, '#ff9a6a', 3, 1.1, 1.03);
+  addAtmosphere(moon, '#c9c4ff', 4.5, 0.5, 1.01);
 
   const planets: { id: Planet; p: typeof moon; base: number; spin: number }[] = [
     { id: 'moon', p: moon, base: 1, spin: 0.035 },
@@ -618,7 +594,6 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
     { id: 'earth', p: earth, base: 1, spin: 0.08 },
   ];
 
-  // etiquetas tocables con el color de cada cuerpo (color semántico)
   const HAND = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10V3.5a1.5 1.5 0 0 1 3 0V10V5a1.5 1.5 0 0 1 3 0v8.5c0 4-2.6 7.5-7 7.5-3 0-4.6-1.4-6-3.6L3 13.3a1.6 1.6 0 0 1 2.6-1.8L9 15z"/></svg>';
   const labels = new Map<Planet, HTMLElement>();
   let comparing = false;
@@ -638,7 +613,6 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
     paintLabel(id);
   });
 
-  // 3 lugares: 0 = grande (protagonista), 1 = mediano, 2 = pequeño
   const slotOf: Record<Planet, number> = { moon: 0, mars: 1, earth: 2 };
   let slots: { pos: Vector3; scale: number }[] = [];
   let cmpSlots: Record<Planet, { pos: Vector3; scale: number }> | null = null;
@@ -649,16 +623,15 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
     const hw = halfW();
     slots = isWide()
       ? [
-          { pos: new Vector3(hw * 0.52, -0.15, 0), scale: 1.6 },
-          { pos: new Vector3(hw * 0.1, -1.35, -1.2), scale: 0.42 },
-          { pos: new Vector3(hw * 0.06, 1.45, -3), scale: 0.3 },
+          { pos: new Vector3(hw * 0.55, -0.05, 0), scale: 1.42 },
+          { pos: new Vector3(hw * 0.08, -1.25, -0.6), scale: 0.5 },
+          { pos: new Vector3(hw * 0.14, 1.3, -1.4), scale: 0.4 },
         ]
       : [
           { pos: new Vector3(hw * 0.4, 1.05, 0), scale: 0.6 },
           { pos: new Vector3(-hw * 0.5, 0.75, -1.2), scale: 0.32 },
           { pos: new Vector3(-hw * 0.6, 2.0, -3), scale: 0.24 },
         ];
-    // vista "comparar": los tres en fila, de mayor a menor, a escala real entre ellos
     const order: Planet[] = ['earth', 'mars', 'moon'];
     const sum = order.reduce((a, id) => a + REAL_SIZE[id], 0) * 2;
     const gap = isWide() ? 0.35 : 0.14;
@@ -705,7 +678,6 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
     gsap.to(g.scale, { x: sl.scale, y: sl.scale, z: sl.scale, duration: d, ease: 'power3.inOut' });
   };
 
-  /** Lleva el planeta tocado al lugar grande; el que estaba allí ocupa su lugar. */
   const feature = (id: Planet) => {
     const from = slotOf[id];
     if (from === 0) return;
@@ -719,7 +691,6 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
   const ro = new ResizeObserver(layout);
   ro.observe(host);
 
-  // interacción: hover y toque
   const ray = new Raycaster();
   const ndc = new Vector2();
   let hovered: Planet | null = null;
@@ -773,7 +744,6 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
   window.addEventListener('pointermove', onMove);
   canvas.addEventListener('click', onClick);
 
-  // bucle
   let raf = 0;
   let last = performance.now();
   const v = new Vector3();
@@ -781,7 +751,6 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (!reducedMotion && !calm) {
-      // giro lento: solo la rotación propia, sin parpadeos ni brillos que compitan
       planets.forEach((pl) => (pl.p.mesh.rotation.y += dt * pl.spin));
       camera.position.x += (mx * 0.4 - camera.position.x) * 0.04;
       camera.position.y += (-my * 0.28 - camera.position.y) * 0.04;
@@ -837,8 +806,6 @@ function createSpace(host: HTMLElement, labelsHost: HTMLElement, onPick: (p: Pla
   };
 }
 
-// ---------------------------------------------------------------- Bip (robot guía original)
-// Los colores salen de variables CSS para que el niño pueda pintar a Bip.
 const BIP_SVG = `
 <svg viewBox="0 0 140 170" aria-hidden="true">
   <defs>
@@ -865,17 +832,6 @@ const BIP_SVG = `
   <ellipse cx="104" cy="70" rx="6" ry="4" fill="#f472b6" opacity=".55"/>
 </svg>`;
 
-/** Icono de rover genérico (original), coloreado con el acento del robot. */
-const roverIcon = (color: string) => `
-<svg viewBox="0 0 56 40" aria-hidden="true">
-  <rect x="12" y="10" width="32" height="14" rx="4" fill="${color}" opacity=".9"/>
-  <rect x="18" y="4" width="3" height="8" fill="#c9ccd3"/><circle cx="19.5" cy="4" r="3.5" fill="#c9ccd3"/>
-  <rect x="8" y="22" width="40" height="3" rx="1.5" fill="#8b8fa3"/>
-  <circle cx="13" cy="31" r="6" fill="#2b2d33" stroke="#c9ccd3" stroke-width="2"/>
-  <circle cx="28" cy="31" r="6" fill="#2b2d33" stroke="#c9ccd3" stroke-width="2"/>
-  <circle cx="43" cy="31" r="6" fill="#2b2d33" stroke="#c9ccd3" stroke-width="2"/>
-</svg>`;
-
 const ICONS = {
   build: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a0b33" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>',
   map: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a0b33" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>',
@@ -889,19 +845,17 @@ const ICONS = {
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
 };
 
-/** Siguiente misión concreta (una meta clara, base §5.6 "Misiones"). */
 function nextMission(): { title: string; hint: string } {
   const s = getState();
   for (const id of ALL_ROBOTS) {
     const r = ROBOTS[id];
-    if (!s.assembled[id]) return { title: `Arma el ${r.name.split(' ·')[0]}`, hint: 'Une sus piezas como un rompecabezas' };
+    if (!s.assembled[id]) return { title: tr(`Build the ${r.name.split(' ·')[0]}`, `Arma el ${r.name.split(' ·')[0]}`), hint: tr('Put its pieces together like a puzzle', 'Une sus piezas como un rompecabezas') };
     const lvl = s.levels[id].findIndex((x) => !x);
-    if (lvl >= 0) return { title: `Nivel ${lvl + 1} del ${r.name.split(' ·')[0]}`, hint: `Te faltan ${4 - s.levels[id].filter(Boolean).length} niveles en su mapa` };
+    if (lvl >= 0) return { title: tr(`Level ${lvl + 1} of the ${r.name.split(' ·')[0]}`, `Nivel ${lvl + 1} del ${r.name.split(' ·')[0]}`), hint: tr(`${4 - s.levels[id].filter(Boolean).length} levels left on its map`, `Te faltan ${4 - s.levels[id].filter(Boolean).length} niveles en su mapa`) };
   }
-  return { title: '¡Gana tu certificado!', hint: 'Completaste todos los robots' };
+  return { title: tr('Earn your certificate!', '¡Gana tu certificado!'), hint: tr('You completed all the robots', 'Completaste todos los robots') };
 }
 
-// ---------------------------------------------------------------- pantalla
 const home: ScreenFactory = ({ root, go }) => {
   injectStyles();
   const state = getState();
@@ -916,14 +870,14 @@ const home: ScreenFactory = ({ root, go }) => {
     const n = state.levels[id].filter(Boolean).length;
     const moonBody = r.body === 'moon';
     const built = state.assembled[id];
-    const place = moonBody ? 'LUNA' : 'MARTE';
+    const place = moonBody ? tr('MOON', 'LUNA') : tr('MARS', 'MARTE');
     const placeColor = moonBody ? PLANET_COLOR.moon : '#fdba74';
-    const badge = n === 4 ? '<span class="kid__robot-badge">¡Completo!</span>' : built ? '' : '<span class="kid__robot-badge kid__robot-badge--lock">Por armar</span>';
+    const badge = n === 4 ? `<span class="kid__robot-badge">${tr('Complete!', '¡Completo!')}</span>` : built ? '' : `<span class="kid__robot-badge kid__robot-badge--lock">${tr('To build', 'Por armar')}</span>`;
     return `
       <li>
         <button type="button" class="kid__robot${built ? '' : ' kid__robot--locked'}" data-robot="${id}" style="--b:${placeColor}"
-          aria-label="${esc(r.name)}, ${place.toLowerCase()}, ${built ? `${n} de 4 niveles` : 'por armar'}">
-          ${badge}${roverIcon(r.accent)}
+          aria-label="${esc(r.name)}, ${place.toLowerCase()}, ${built ? tr(`${n} of 4 levels`, `${n} de 4 niveles`) : tr('not built yet', 'por armar')}">
+          ${badge}<span class="kid__robot-ico" style="color:${r.accent}">${exIcon(id)}</span>
           <span class="kid__robot-name">${esc(r.name)}</span>
           <span class="kid__robot-place">${place}</span>
           <span class="kid__robot-stars" aria-hidden="true">${'<b>★</b>'.repeat(n)}${'★'.repeat(4 - n)}<small>${n}/4</small></span>
@@ -939,55 +893,56 @@ const home: ScreenFactory = ({ root, go }) => {
       <div class="kid__content">
         <h1 class="kid__title">
           <span class="kid__title-main" aria-label="GalaxyCore">${'GalaxyCore'.split('').map((c) => `<span>${c}</span>`).join('')}</span>
-          <span class="kid__title-sub">MISIÓN ROBOTS</span>
+          <span class="kid__title-sub">${tr('ROBOT MISSION', 'MISIÓN ROBOTS')}</span>
         </h1>
         <div class="kid__guide">
-          <button type="button" class="bip wave" data-bip aria-label="Bip, tu robot guía. Tócalo para una pregunta">${BIP_SVG}</button>
+          <button type="button" class="bip wave" data-bip aria-label="${tr('Bip, your guide robot. Tap it for a question', 'Bip, tu robot guía. Tócalo para una pregunta')}">${BIP_SVG}</button>
           <div class="bubble" role="status" aria-live="polite">
-            <span class="bubble__name">BIP · TU ROBOT GUÍA</span>
+            <span class="bubble__name">${tr('BIP · YOUR GUIDE ROBOT', 'BIP · TU ROBOT GUÍA')}</span>
             <span data-say></span>
             <span class="bubble__more" data-more hidden></span>
             <div class="guess" data-guess hidden></div>
             <div class="bubble__tools">
-              <button type="button" class="bubble__btn" data-voice>${ICONS.speak}Escuchar</button>
-              <button type="button" class="bubble__btn" data-ask>${ICONS.bulb}¿Adivina?</button>
+              <button type="button" class="bubble__btn" data-voice>${ICONS.speak}${tr('Listen', 'Escuchar')}</button>
+              <button type="button" class="bubble__btn" data-ask>${ICONS.bulb}${tr('Guess?', '¿Adivina?')}</button>
             </div>
           </div>
         </div>
         <div class="kid__actions">
-          <button type="button" class="kid__play" data-start>${ICONS.play}¡JUGAR!</button>
-          <span class="kid__next"><small>${isNew ? 'TU PRIMERA MISIÓN' : 'SIGUIENTE MISIÓN'}</small><b>${esc(mission.title)}</b>${esc(mission.hint)}</span>
+          <button type="button" class="kid__play" data-start>${ICONS.play}${tr('PLAY!', '¡JUGAR!')}</button>
+          <span class="kid__next"><small>${isNew ? tr('YOUR FIRST MISSION', 'TU PRIMERA MISIÓN') : tr('NEXT MISSION', 'SIGUIENTE MISIÓN')}</small><b>${esc(mission.title)}</b>${esc(mission.hint)}</span>
         </div>
         <div class="kid__tools">
-          <button type="button" class="kid__tool" data-compare aria-pressed="false">${ICONS.ruler}<span>Comparar tamaños</span></button>
-          <button type="button" class="kid__tool" data-gravity hidden>${ICONS.jump}Gravedad y saltos</button>
-          <button type="button" class="kid__tool" data-awards>${ICONS.trophy}Mis logros</button>
-          <button type="button" class="kid__tool" data-settings aria-expanded="false">${ICONS.gear}Ajustes</button>
+          <button type="button" class="kid__tool" data-compare aria-pressed="false">${ICONS.ruler}<span>${tr('Sizes', 'Tamaños')}</span></button>
+          <button type="button" class="kid__tool" data-gravity hidden>${ICONS.jump}${tr('Gravity and jumps', 'Gravedad y saltos')}</button>
+          <button type="button" class="kid__tool kid__tool--ghost" data-explore>${exIcon('opportunity', 'kid__ex-ico')}${tr('<span>Explorers</span>', '<span>Exploradores</span>')}</button>
+          <button type="button" class="kid__tool" data-awards>${ICONS.trophy}${tr('Achievements', 'Logros')}</button>
+          <button type="button" class="kid__tool" data-settings aria-expanded="false">${ICONS.gear}${tr('Settings', 'Ajustes')}</button>
         </div>
         ${
           isNew
-            ? `<ol class="kid__steps" aria-label="Cómo se juega">
-          <li class="kid__step"><i style="background:#67e8f9">${ICONS.build}</i><span><small>PASO 1</small>Arma el robot</span></li>
-          <li class="kid__step"><i style="background:#fcd34d">${ICONS.map}</i><span><small>PASO 2</small>Viaja por su mapa</span></li>
-          <li class="kid__step"><i style="background:#86efac">${ICONS.medal}</i><span><small>PASO 3</small>Gana tu certificado</span></li>
+            ? `<ol class="kid__steps" aria-label="${tr('How to play', 'Cómo se juega')}">
+          <li class="kid__step"><i style="background:#67e8f9">${ICONS.build}</i><span><small>${tr('STEP', 'PASO')} 1</small>${tr('Build the robot', 'Arma el robot')}</span></li>
+          <li class="kid__step"><i style="background:#fcd34d">${ICONS.map}</i><span><small>${tr('STEP', 'PASO')} 2</small>${tr('Travel its map', 'Viaja por su mapa')}</span></li>
+          <li class="kid__step"><i style="background:#86efac">${ICONS.medal}</i><span><small>${tr('STEP', 'PASO')} 3</small>${tr('Earn your certificate', 'Gana tu certificado')}</span></li>
         </ol>`
             : ''
         }
         <div class="kid__album">
-          <h2>TU COLECCIÓN DE ROBOTS · <b>${builtCount}/4</b></h2>
+          <h2>${tr('YOUR ROBOT COLLECTION', 'TU COLECCIÓN DE ROBOTS')} · <b>${builtCount}/4</b></h2>
           <ul class="kid__robots">${robotCards}</ul>
         </div>
       </div>
-      <div class="kid__pop" data-pop hidden role="dialog" aria-label="Ajustes">
+      <div class="kid__pop" data-pop hidden role="dialog" aria-label="${tr('Settings', 'Ajustes')}">
         <h3>AJUSTES</h3>
-        <button type="button" data-opt="sound">Sonidos <span></span></button>
-        <button type="button" data-opt="voice">Bip habla en voz alta <span></span></button>
-        <button type="button" data-opt="calm">Menos movimiento <span></span></button>
-        <button type="button" data-opt="more">Más datos (9–12 años) <span></span></button>
-        <span class="lbl">Color de Bip</span>
+        <button type="button" data-opt="sound">${tr('Sounds', 'Sonidos')} <span></span></button>
+        <button type="button" data-opt="voice">${tr('Bip speaks out loud', 'Bip habla en voz alta')} <span></span></button>
+        <button type="button" data-opt="calm">${tr('Less motion', 'Menos movimiento')} <span></span></button>
+        <button type="button" data-opt="more">${tr('More facts (ages 9–12)', 'Más datos (9–12 años)')} <span></span></button>
+        <span class="lbl">${tr('Bip\'s color', 'Color de Bip')}</span>
         <div class="sw">${BIP_COLORS.map((c) => `<button type="button" data-color="${c.id}" style="--sw:${c.b}" aria-label="Bip ${c.label}"></button>`).join('')}</div>
-        <button type="button" data-rename>${name ? `No soy ${esc(name)}` : 'Escribir mi nombre'} <span>›</span></button>
-        <button type="button" data-adults>Para padres y docentes <span>›</span></button>
+        <button type="button" data-rename>${name ? tr(`I'm not ${esc(name)}`, `No soy ${esc(name)}`) : tr('Write my name', 'Escribir mi nombre')} <span>›</span></button>
+        <button type="button" data-adults>${tr('For parents and teachers', 'Para padres y docentes')} <span>›</span></button>
       </div>
     </section>`;
 
@@ -1001,6 +956,7 @@ const home: ScreenFactory = ({ root, go }) => {
   const voiceBtn = root.querySelector<HTMLButtonElement>('[data-voice]')!;
   const playBtn = root.querySelector<HTMLButtonElement>('[data-start]')!;
   const compareBtn = root.querySelector<HTMLButtonElement>('[data-compare]')!;
+  root.querySelector('[data-explore]')!.addEventListener('click', () => go('explore'));
   const gravityBtn = root.querySelector<HTMLButtonElement>('[data-gravity]')!;
   const settingsBtn = root.querySelector<HTMLButtonElement>('[data-settings]')!;
   const pop = root.querySelector<HTMLElement>('[data-pop]')!;
@@ -1017,7 +973,6 @@ const home: ScreenFactory = ({ root, go }) => {
   applyCalm();
   applyColor();
 
-  // ---------- Bip habla ----------
   let typeTimer = 0;
   let current = '';
   const synth: SpeechSynthesis | undefined = 'speechSynthesis' in window ? window.speechSynthesis : undefined;
@@ -1033,9 +988,12 @@ const home: ScreenFactory = ({ root, go }) => {
     synth.cancel();
     const text = moreEl.hidden ? current : `${current} ${moreEl.textContent}`;
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'es-ES';
+    u.lang = locale;
     const voices = synth.getVoices();
-    const v = voices.find((x) => x.lang.startsWith('es') && /mx|us|419|pe/i.test(x.lang)) ?? voices.find((x) => x.lang.startsWith('es'));
+    const v = tr(
+      voices.find((x) => x.lang === 'en-US') ?? voices.find((x) => x.lang.startsWith('en')),
+      voices.find((x) => x.lang.startsWith('es') && /mx|us|419|pe/i.test(x.lang)) ?? voices.find((x) => x.lang.startsWith('es')),
+    );
     if (v) u.voice = v;
     u.pitch = 1.3;
     u.onstart = () => voiceBtn.classList.add('speaking');
@@ -1043,7 +1001,6 @@ const home: ScreenFactory = ({ root, go }) => {
     synth.speak(u);
   };
 
-  /** Bip dice un texto. `extra` solo se muestra en modo "Más datos". */
   const say = (text: string, opts: { keepGuess?: boolean; extra?: string } = {}) => {
     current = text;
     if (!opts.keepGuess) guessEl.hidden = true;
@@ -1077,9 +1034,8 @@ const home: ScreenFactory = ({ root, go }) => {
     if ((e as AnimationEvent).animationName === 'bip-jump') bip.classList.remove('jump');
   });
 
-  /** Pregunta de predicción: primero el niño elige, luego Bip explica. */
   const ask = (g: Guess, after?: () => void) => {
-    say(`¿Adivina? ${g.q}`, { keepGuess: true });
+    say(`${tr('Guess!', '¿Adivina?')} ${g.q}`, { keepGuess: true });
     guessEl.innerHTML = '';
     guessEl.hidden = false;
     g.options.forEach((opt, i) => {
@@ -1096,7 +1052,7 @@ const home: ScreenFactory = ({ root, go }) => {
           sfx.ok();
           jump();
         } else sfx.soft();
-        say(`${ok ? '¡Bien pensado!' : '¡Casi! Era la otra.'} ${g.why}`, { keepGuess: true, extra: g.more });
+        say(`${ok ? tr('Good thinking!', '¡Bien pensado!') : tr('Almost! It was the other one.', '¡Casi! Era la otra.')} ${g.why}`, { keepGuess: true, extra: g.more });
         after?.();
       });
       guessEl.appendChild(b);
@@ -1107,8 +1063,11 @@ const home: ScreenFactory = ({ root, go }) => {
   const askNext = () => ask(GUESSES[guessIdx++ % GUESSES.length]);
 
   const greeting = name
-    ? `¡Hola, ${name}! Toca ¡JUGAR! para tu siguiente misión, o toca un planeta para adivinar algo.`
-    : '¡Hola! Soy Bip. Vamos a armar robots que exploraron la Luna y Marte. ¡Toca JUGAR!';
+    ? tr(
+        `Hi, ${name}! Tap PLAY! for your next mission, or tap a planet to guess something.`,
+        `¡Hola, ${name}! Toca ¡JUGAR! para tu siguiente misión, o toca un planeta para adivinar algo.`,
+      )
+    : tr('Hi! I\'m Bip. Let\'s build robots that explored the Moon and Mars. Tap PLAY!', '¡Hola! Soy Bip. Vamos a armar robots que exploraron la Luna y Marte. ¡Toca JUGAR!');
   const greetTimer = window.setTimeout(() => say(greeting), reducedMotion || calm ? 0 : 900);
 
   bip.addEventListener('click', () => {
@@ -1125,7 +1084,6 @@ const home: ScreenFactory = ({ root, go }) => {
     speak();
   });
 
-  // ojos que siguen el puntero
   const eyes = bip.querySelector<SVGGElement>('.bip__eyes')!;
   const onEyes = (e: PointerEvent) => {
     const r = bip.getBoundingClientRect();
@@ -1137,7 +1095,6 @@ const home: ScreenFactory = ({ root, go }) => {
   };
   window.addEventListener('pointermove', onEyes);
 
-  // ---------- escena 3D ----------
   let space: Space | null = null;
   const asked = new Set<Planet>();
   const spaceTimer = window.setTimeout(() => {
@@ -1145,7 +1102,6 @@ const home: ScreenFactory = ({ root, go }) => {
     space = createSpace(spaceHost, labelsHost, (p) => {
       jump();
       const info = PLANET_INFO[p];
-      // la primera vez que toca un planeta: pregunta; después: la explicación directa
       if (!asked.has(p)) {
         asked.add(p);
         ask(info.guess);
@@ -1156,7 +1112,6 @@ const home: ScreenFactory = ({ root, go }) => {
     if (!space) compareBtn.hidden = true;
   }, 60);
 
-  // ---------- comparar tamaños (modelo a escala) ----------
   let comparing = false;
   const openGravity = () => {
     const wrap = document.createElement('div');
@@ -1165,57 +1120,55 @@ const home: ScreenFactory = ({ root, go }) => {
       `<div class="kid-cmp__row"><span>${label}</span><span class="kid-cmp__bar"><s style="width:${(value / max) * 100}%;background:${color}"></s></span><span class="kid-cmp__val">${txt}</span></div>`;
     const { earth: E, mars: M, moon: L } = PLANET_COLOR;
     wrap.innerHTML = `
-      <div><h4>FUERZA DE GRAVEDAD</h4>
-        ${bar('Tierra', 9.8, 9.8, E, '9,8 m/s²')}${bar('Marte', 3.7, 9.8, M, '3,7 m/s²')}${bar('Luna', 1.6, 9.8, L, '1,6 m/s²')}</div>
-      <div><h4>SI SALTAS 1 METRO EN LA TIERRA…</h4>
-        ${bar('Tierra', 1, 6, E, '1 m')}${bar('Marte', 2.6, 6, M, '≈ 2,6 m')}${bar('Luna', 6, 6, L, '≈ 6 m')}</div>
-      <p>¿Ves la relación? Menos gravedad, saltos más altos. ¿En cuál pesaría menos tu mochila?</p>`;
-    openModal({ title: 'Gravedad y saltos', body: wrap, actions: [{ label: 'Cerrar', variant: 'ghost' }] });
+      <div><h4>${tr('FORCE OF GRAVITY', 'FUERZA DE GRAVEDAD')}</h4>
+        ${bar(tr('Earth', 'Tierra'), 9.8, 9.8, E, tr('9.8 m/s²', '9,8 m/s²'))}${bar(tr('Mars', 'Marte'), 3.7, 9.8, M, tr('3.7 m/s²', '3,7 m/s²'))}${bar(tr('Moon', 'Luna'), 1.6, 9.8, L, tr('1.6 m/s²', '1,6 m/s²'))}</div>
+      <div><h4>${tr('IF YOU JUMP 1 METER ON EARTH…', 'SI SALTAS 1 METRO EN LA TIERRA…')}</h4>
+        ${bar(tr('Earth', 'Tierra'), 1, 6, E, '1 m')}${bar(tr('Mars', 'Marte'), 2.6, 6, M, tr('≈ 2.6 m', '≈ 2,6 m'))}${bar(tr('Moon', 'Luna'), 6, 6, L, '≈ 6 m')}</div>
+      <p>${tr('See the connection? Less gravity, higher jumps. Where would your backpack weigh less?', '¿Ves la relación? Menos gravedad, saltos más altos. ¿En cuál pesaría menos tu mochila?')}</p>`;
+    openModal({ title: tr('Gravity and jumps', 'Gravedad y saltos'), body: wrap, actions: [{ label: tr('Close', 'Cerrar'), variant: 'ghost' }] });
   };
   compareBtn.addEventListener('click', () => {
     comparing = !comparing;
     compareBtn.setAttribute('aria-pressed', String(comparing));
-    compareBtn.querySelector('span')!.textContent = comparing ? 'Volver' : 'Comparar tamaños';
+    compareBtn.querySelector('span')!.textContent = comparing ? tr('Back', 'Volver') : tr('Sizes', 'Tamaños');
     gravityBtn.hidden = !comparing;
     space?.compare(comparing);
     sfx.whoosh();
     if (comparing) {
       ask(
         {
-          q: 'Así de grandes son de verdad. ¿Cuántas Lunas cabrían a lo ancho de la Tierra?',
-          options: ['Casi 4', 'Casi 20'],
+          q: tr('This is how big they really are. How many Moons would fit across Earth?', 'Así de grandes son de verdad. ¿Cuántas Lunas cabrían a lo ancho de la Tierra?'),
+          options: [tr('Almost 4', 'Casi 4'), tr('Almost 20', 'Casi 20')],
           correct: 0,
-          why: 'La Tierra es unas 3,7 veces más ancha que la Luna. Y Marte es casi la mitad de la Tierra.',
-          more: 'Diámetros: Tierra 12.742 km, Marte 6.779 km y Luna 3.474 km.',
+          why: tr('Earth is about 3.7 times wider than the Moon. And Mars is almost half the size of Earth.', 'La Tierra es unas 3,7 veces más ancha que la Luna. Y Marte es casi la mitad de la Tierra.'),
+          more: tr('Diameters: Earth 12,742 km, Mars 6,779 km and Moon 3,474 km.', 'Diámetros: Tierra 12.742 km, Marte 6.779 km y Luna 3.474 km.'),
         },
       );
-    } else say('¡Listo! Toca un planeta para traerlo al frente.');
+    } else say(tr('Done! Tap a planet to bring it to the front.', '¡Listo! Toca un planeta para traerlo al frente.'));
   });
   gravityBtn.addEventListener('click', () => {
     sfx.pop();
     openGravity();
   });
 
-  // ---------- logros ----------
   root.querySelector('[data-awards]')!.addEventListener('click', () => {
     sfx.ok();
     const s = getState();
     const total = levelsDone();
     const wrap = document.createElement('div');
     wrap.innerHTML = `
-      <p class="kid-total">${total} de ${TOTAL_LEVELS} estrellas · ${s.score} puntos</p>
+      <p class="kid-total">${tr(`${total} of ${TOTAL_LEVELS} stars · ${s.score} points`, `${total} de ${TOTAL_LEVELS} estrellas · ${s.score} puntos`)}</p>
       <ul class="kid-list">${ALL_ROBOTS.map((id) => {
         const n = s.levels[id].filter(Boolean).length;
-        const tag = n === 4 ? ' · ¡Completo!' : s.assembled[id] ? '' : ' · Por armar';
+        const tag = n === 4 ? tr(' · Complete!', ' · ¡Completo!') : s.assembled[id] ? '' : tr(' · Not built yet', ' · Por armar');
         return `<li><b>${esc(ROBOTS[id].name)}${tag}</b><span class="st">${'<i>★</i>'.repeat(n)}${'★'.repeat(4 - n)}</span></li>`;
       }).join('')}</ul>
       <p style="margin:14px 0 0;color:var(--muted);text-align:center">${
-        total === TOTAL_LEVELS ? '¡Ya puedes ganar tu certificado de astronauta!' : `Te faltan ${TOTAL_LEVELS - total} estrellas para tu certificado. ¡Sin apuro!`
+        total === TOTAL_LEVELS ? tr('You can now earn your astronaut certificate!', '¡Ya puedes ganar tu certificado de astronauta!') : tr(`${TOTAL_LEVELS - total} more stars for your certificate. No rush!`, `Te faltan ${TOTAL_LEVELS - total} estrellas para tu certificado. ¡Sin apuro!`)
       }</p>`;
-    openModal({ title: 'Mis logros', body: wrap, actions: [{ label: 'Cerrar', variant: 'ghost' }] });
+    openModal({ title: tr('My achievements', 'Mis logros'), body: wrap, actions: [{ label: tr('Close', 'Cerrar'), variant: 'ghost' }] });
   });
 
-  // ---------- ajustes ----------
   const OPTS: Record<string, { get: () => boolean; set: (v: boolean) => void }> = {
     sound: { get: () => soundOn, set: (v) => ((soundOn = v), savePref('novacore:ui-sound', v)) },
     voice: { get: () => autoVoice, set: (v) => ((autoVoice = v), savePref('novacore:auto-voice', v), v && speak()) },
@@ -1226,7 +1179,7 @@ const home: ScreenFactory = ({ root, go }) => {
     pop.querySelectorAll<HTMLButtonElement>('[data-opt]').forEach((b) => {
       const on = OPTS[b.dataset.opt!].get();
       const tag = b.querySelector('span')!;
-      tag.textContent = on ? 'SÍ' : 'NO';
+      tag.textContent = on ? tr('YES', 'SÍ') : 'NO';
       tag.classList.toggle('on', on);
       b.setAttribute('aria-pressed', String(on));
     });
@@ -1238,7 +1191,7 @@ const home: ScreenFactory = ({ root, go }) => {
       o.set(!o.get());
       paintOpts();
       sfx.pop();
-      if (b.dataset.opt === 'more') say(moreData ? '¡Modo científico! Ahora te daré más datos.' : 'Listo, mensajes cortos.');
+      if (b.dataset.opt === 'more') say(moreData ? tr('Science mode! Now I will give you more facts.', '¡Modo científico! Ahora te daré más datos.') : tr('OK, short messages.', 'Listo, mensajes cortos.'));
     }),
   );
   pop.querySelectorAll<HTMLButtonElement>('[data-color]').forEach((b) =>
@@ -1248,7 +1201,7 @@ const home: ScreenFactory = ({ root, go }) => {
       applyColor();
       jump();
       sfx.bip();
-      say(`¡Me encanta mi nuevo color ${BIP_COLORS.find((c) => c.id === bipColor)!.label.toLowerCase()}!`);
+      say(tr(`I love my new ${BIP_COLORS.find((c) => c.id === bipColor)!.label.toLowerCase()} color!`, `¡Me encanta mi nuevo color ${BIP_COLORS.find((c) => c.id === bipColor)!.label.toLowerCase()}!`));
     }),
   );
   const placePop = () => {
@@ -1278,19 +1231,18 @@ const home: ScreenFactory = ({ root, go }) => {
     pop.hidden = true;
     const wrap = document.createElement('div');
     wrap.innerHTML = `
-      <p style="margin:0 0 10px">GalaxyCore está pensado para niños de 6 a 12 años:</p>
+      <p style="margin:0 0 10px">${tr('GalaxyCore is designed for children aged 6 to 12:', 'GalaxyCore está pensado para niños de 6 a 12 años:')}</p>
       <ul style="margin:0;padding-left:18px;line-height:1.6;color:var(--muted)">
-        <li>Sin anuncios, compras, cajas sorpresa ni chat.</li>
-        <li>No pide cuenta ni correo: solo guarda el nombre y el progreso en este dispositivo.</li>
-        <li>No hay rachas ni cuentas regresivas: se puede pausar y volver cuando quieran.</li>
-        <li>Todos los mensajes de Bip se pueden escuchar en voz alta.</li>
-        <li>Ajustes: "Menos movimiento" y "Más datos (9–12 años)".</li>
-        <li>Recomendamos jugar acompañados y conversar: ¿qué robot te gustó? ¿por qué saltarías más en la Luna?</li>
+        <li>${tr('No ads, purchases, loot boxes or chat.', 'Sin anuncios, compras, cajas sorpresa ni chat.')}</li>
+        <li>${tr('No account or email needed: it only stores the name and progress on this device.', 'No pide cuenta ni correo: solo guarda el nombre y el progreso en este dispositivo.')}</li>
+        <li>${tr('No streaks or countdowns: you can pause and come back whenever you like.', 'No hay rachas ni cuentas regresivas: se puede pausar y volver cuando quieran.')}</li>
+        <li>${tr('All of Bip\'s messages can be heard out loud.', 'Todos los mensajes de Bip se pueden escuchar en voz alta.')}</li>
+        <li>${tr('Settings: "Less motion" and "More facts (ages 9–12)".', 'Ajustes: "Menos movimiento" y "Más datos (9–12 años)".')}</li>
+        <li>${tr('We recommend playing together and talking: which robot did you like? Why would you jump higher on the Moon?', 'Recomendamos jugar acompañados y conversar: ¿qué robot te gustó? ¿por qué saltarías más en la Luna?')}</li>
       </ul>`;
-    openModal({ title: 'Para padres y docentes', body: wrap, actions: [{ label: 'Cerrar', variant: 'ghost' }] });
+    openModal({ title: tr('For parents and teachers', 'Para padres y docentes'), body: wrap, actions: [{ label: tr('Close', 'Cerrar'), variant: 'ghost' }] });
   });
 
-  // ---------- entrada (una sola vez, sin bucles) ----------
   const tl = gsap.timeline();
   if (!reducedMotion && !calm) {
     tl.from('.kid__title-main span', { opacity: 0, y: 30, duration: 0.5, stagger: 0.03, ease: 'back.out(1.8)', clearProps: 'transform,opacity' })
@@ -1299,7 +1251,6 @@ const home: ScreenFactory = ({ root, go }) => {
       .from(['.kid__actions', '.kid__tools', '.kid__step', '.kid__album'], { opacity: 0, y: 16, duration: 0.4, stagger: 0.06, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.2');
   }
 
-  // ---------- JUGAR ----------
   const start = () => {
     sfx.go();
     window.setTimeout(() => go(getState().name ? 'podiums' : 'name'), reducedMotion ? 0 : 280);
@@ -1313,7 +1264,7 @@ const home: ScreenFactory = ({ root, go }) => {
       sfx.bip();
       jump();
       const built = getState().assembled[id];
-      say(built ? ROBOT_FACT[id] : `${ROBOT_FACT[id]} Aún no lo armas: ¡toca JUGAR para sumarlo a tu colección!`);
+      say(built ? ROBOT_FACT[id] : `${ROBOT_FACT[id]} ${tr("You haven't built it yet: tap PLAY to add it to your collection!", 'Aún no lo armas: ¡toca JUGAR para sumarlo a tu colección!')}`);
     });
   });
 
@@ -1328,7 +1279,6 @@ const home: ScreenFactory = ({ root, go }) => {
   };
   document.addEventListener('keydown', onKey);
 
-  // ---------- estrellas fugaces (pocas, y nunca en "menos movimiento") ----------
   let meteorTimer = 0;
   const meteor = () => {
     if (!alive) return;

@@ -1,9 +1,8 @@
-/** Modal accesible simple + confirmación + toast. */
+import { tr } from '../i18n';
 
 export interface ModalAction {
   label: string;
   variant?: 'primary' | 'ghost';
-  /** devolver `false` mantiene el modal abierto */
   onClick?: () => void | boolean;
 }
 
@@ -11,7 +10,6 @@ export interface ModalOptions {
   title: string;
   body?: string | Node;
   actions?: ModalAction[];
-  /** cerrar con Escape o click en el fondo (por defecto true) */
   dismissable?: boolean;
   onClose?: () => void;
 }
@@ -45,7 +43,7 @@ export function openModal(opts: ModalOptions): () => void {
 
   const actions = document.createElement('div');
   actions.className = 'modal__actions';
-  const list = opts.actions ?? [{ label: 'Cerrar', variant: 'ghost' }];
+  const list = opts.actions ?? [{ label: tr('Close', 'Cerrar'), variant: 'ghost' }];
   let closed = false;
   const prevFocus = document.activeElement as HTMLElement | null;
 
@@ -86,7 +84,7 @@ export function openModal(opts: ModalOptions): () => void {
   return close;
 }
 
-export function confirmModal(title: string, text: string, ok = 'Aceptar', cancel = 'Cancelar'): Promise<boolean> {
+export function confirmModal(title: string, text: string, ok = tr('OK', 'Aceptar'), cancel = tr('Cancel', 'Cancelar')): Promise<boolean> {
   return new Promise((resolve) => {
     let answered = false;
     openModal({
@@ -115,7 +113,7 @@ export function toast(message: string, ms = 2200): void {
   }
   el.textContent = message;
   el.classList.remove('toast--show');
-  void el.offsetWidth; // reiniciar animación
+  void el.offsetWidth;
   el.classList.add('toast--show');
   window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => {
@@ -123,7 +121,6 @@ export function toast(message: string, ms = 2200): void {
   }, ms);
 }
 
-/** Escapa texto para insertarlo en innerHTML. */
 export function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }

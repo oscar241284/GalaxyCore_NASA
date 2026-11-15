@@ -1,15 +1,3 @@
-/**
- * PUZZLE 3D (pensado para niños): flota → tiembla → explota en piezas → el jugador
- * arrastra cada pieza a su silueta brillante → destello + fusión → aterrizaje → mapa.
- *
- * Ayudas para que sea fácil:
- * - Imán: al acercar la pieza, la silueta la atrae; el margen para encajar es grande.
- * - Al tomar una pieza, gira sola a su posición correcta y su silueta brilla.
- * - Una línea guía muestra a dónde va. Las ruedas izquierda/derecha son intercambiables.
- * - Tocar una pieza (sin arrastrar) muestra una mano que enseña a dónde llevarla.
- * - Si falla 2 veces, la pieza se coloca sola. Botón "Ayuda" coloca la siguiente.
- * - Al encajar, aparece el nombre de la pieza y un dato curioso.
- */
 import gsap from 'gsap';
 import {
   Box3,
@@ -39,10 +27,10 @@ import { disposeSprite, dustBurst, flashSprite } from '../three/effects';
 import type { ParticleSystem } from '../three/effects';
 import { getWorld } from './world';
 import { esc } from '../ui/modal';
+import { tr } from '../i18n';
 
 const GROUND_COLORS = { moon: 0x6f6f78, mars: 0x9a4524 };
 
-// ---------------------------------------------------------------- estilos
 const CSS = `
 .pz-hint {
   position: absolute; left: 50%; top: calc(var(--header-h, 64px) + 64px); z-index: 4;
@@ -113,7 +101,6 @@ function injectStyles(): void {
   document.head.appendChild(s);
 }
 
-// ---------------------------------------------------------------- sonidos simples
 let audio: AudioContext | null = null;
 function tone(f1: number, f2: number, durS: number, type: OscillatorType = 'sine', vol = 0.08, delay = 0): void {
   try {
@@ -132,7 +119,6 @@ function tone(f1: number, f2: number, durS: number, type: OscillatorType = 'sine
     o.start(t);
     o.stop(t + durS + 0.02);
   } catch {
-    /* sin audio */
   }
 }
 const sfx = {
@@ -159,7 +145,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
   const g = robot.group;
   const hero = world.heroPose();
 
-  // Entrada directa (debug) o el robot aún sigue en su podio → colocarlo en pose héroe
   if (g.parent !== scene) {
     world.resetAll();
     world.scene.attach(g);
@@ -189,23 +174,23 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
 
   const pieces = robot.pieces;
   const homes = slot.pieceHomes;
-  const infos = pieces.map((p) => PIECE_INFO[id]?.[p.name] ?? { name: 'Pieza', fact: '' });
+  const infos = pieces.map((p) => PIECE_INFO[id]?.[p.name] ?? { name: tr('Piece', 'Pieza'), fact: '' });
 
   const already = getState().assembled[id];
   root.innerHTML = `
     <div class="puzzle-hud" style="padding-top:calc(var(--header-h, 64px) + 8px);pointer-events:none">
       <h2 class="map__title">${esc(data.name)}</h2>
     </div>
-    <p class="pz-hint" data-hint>Prepárate: el robot se va a desarmar…</p>
+    <p class="pz-hint" data-hint>${tr('Get ready: the robot is about to come apart…', 'Prepárate: el robot se va a desarmar…')}</p>
     <svg class="pz-guide" aria-hidden="true"><line x1="0" y1="0" x2="0" y2="0" /><circle r="0" /></svg>
     <div class="pz-hand" aria-hidden="true">${HAND_SVG}</div>
     <div class="pz-fact" hidden role="status" aria-live="polite"></div>
     <div class="pz-tools">
       <button type="button" class="pz-help" data-help hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
-        Ayuda
+        ${tr('Help', 'Ayuda')}
       </button>
-      ${already ? '<button class="pz-skip" type="button" data-skip>Saltar</button>' : ''}
+      ${already ? `<button class="pz-skip" type="button" data-skip>${tr('Skip', 'Saltar')}</button>` : ''}
     </div>
     <div class="pz-bar" hidden>
       ${pieces.map((_, i) => `<button type="button" class="pz-chip" data-chip="${i}"><i>${i + 1}</i>${esc(infos[i].name)}</button>`).join('')}
@@ -225,13 +210,12 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
   const hand = root.querySelector<HTMLElement>('.pz-hand')!;
   const factEl = root.querySelector<HTMLElement>('.pz-fact')!;
 
-  // ---------- estado ----------
-  const placed = new Set<number>(); // piezas ya colocadas
-  const filled = new Set<number>(); // siluetas ya ocupadas
+  const placed = new Set<number>();
+  const filled = new Set<number>();
   const fails = new Array(pieces.length).fill(0) as number[];
   const taps = new Array(pieces.length).fill(0) as number[];
-  const spots: Vector3[] = pieces.map((p) => p.position.clone()); // posición de espera (local)
-  const waitScale = pieces.map(() => 1); // tamaño mientras espera
+  const spots: Vector3[] = pieces.map((p) => p.position.clone());
+  const waitScale = pieces.map(() => 1);
   let interactive = false;
   let finished = false;
   const anim = { bob: 1, shake: 0 };
@@ -247,7 +231,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     hint.className = `pz-hint${mood ? ` ${mood}` : ''}`;
   };
 
-  // ---------- silueta fantasma ----------
   const ghostRoot = new Group();
   ghostRoot.name = 'ghost';
   const ghostMats: MeshBasicMaterial[] = [];
@@ -285,7 +268,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
   const highlightColor = new Color(0x67e8f9);
   const ghostColor = accent.clone().lerp(new Color(0x9b7bff), 0.4);
 
-  // ---------- frame ----------
   let time = 0;
   const offFrame = onFrame((dt) => {
     time += dt;
@@ -308,7 +290,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     if (dragIndex >= 0) updateGuide();
   });
 
-  // ---------- secuencia de explosión ----------
   const explode = () => {
     g.rotation.z = 0;
     anim.shake = 0;
@@ -320,7 +301,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
       return { hh: hh2, hw: hh2 * camera.aspect };
     })();
     const n = pieces.length;
-    // ¿cuánto espacio libre hay a los lados del robot?
     const robotBox = new Box3().setFromObject(g);
     const halfRobot = (robotBox.max.x - robotBox.min.x) / 2;
     const freeW = hw - halfRobot - 0.25;
@@ -332,7 +312,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
       const p = pieces[i];
       let target: Vector3;
       if (columns) {
-        // dos columnas, a la izquierda y a la derecha del robot
         const side = slotIdx % 2 === 0 ? -1 : 1;
         const row = Math.floor(slotIdx / 2);
         const rows = side < 0 ? Math.ceil(n / 2) : Math.floor(n / 2);
@@ -340,7 +319,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
         const colX = halfRobot + 0.25 + freeW / 2;
         target = new Vector3(side * colX, hh * (0.32 - t * 0.72), 0).add(center);
       } else {
-        // pantalla vertical: una fila arriba y otra abajo del robot
         const top = slotIdx < Math.ceil(n / 2);
         const count = top ? Math.ceil(n / 2) : Math.floor(n / 2);
         const idxInRow = top ? slotIdx : slotIdx - Math.ceil(n / 2);
@@ -354,7 +332,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
       }
       const local = g.worldToLocal(target.clone());
       spots[i].copy(local);
-      // tamaño de espera: más pequeña si no cabe en su columna
       const pb = new Box3().setFromObject(p);
       const pw = Math.max(0.01, pb.max.x - pb.min.x, (pb.max.z - pb.min.z) * 0.6);
       const ph = Math.max(0.01, pb.max.y - pb.min.y, (pb.max.z - pb.min.z) * 0.4);
@@ -366,7 +343,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
         ? MathUtils.clamp(Math.min((freeW * 0.8) / pw, (rowH * 0.85) / ph), 0.32, 0.85)
         : MathUtils.clamp(Math.min((cellW * 0.85) / pw, rowSpaceV / ph), 0.3, 0.8);
       const hs = homes[i].scale;
-      // giro suave (no tan aleatorio) para que la forma siga siendo reconocible
       const rot = new Euler((Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.7);
       const qTarget = homes[i].quat.clone().multiply(new Quaternion().setFromEuler(rot));
       const qStart = p.quaternion.clone();
@@ -402,9 +378,8 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
         interactive = true;
         bar.hidden = false;
         helpBtn.hidden = false;
-        setHint('Arrastra cada pieza hasta la silueta que brilla');
+        setHint(tr('Drag each piece to the glowing outline', 'Arrastra cada pieza hasta la silueta que brilla'));
         updateCounter();
-        // tutorial: la mano enseña con la primera pieza
         timers.push(window.setTimeout(() => showHand(0), 400));
       }, dur(1.1) * 1000),
     );
@@ -422,14 +397,13 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
   const intro = gsap.timeline({ onComplete: explode });
   intro
     .to({}, { duration: dur(1.8) })
-    .add(() => setHint('¡Atención! El robot está vibrando…'))
+    .add(() => setHint(tr('Watch out! The robot is shaking…', '¡Atención! El robot está vibrando…')))
     .to(anim, { shake: 0.02 * hero.scale, duration: dur(0.3) })
     .to({}, { duration: dur(0.6) })
     .to(anim, { shake: 0.07 * hero.scale, bob: 0, duration: dur(0.3) })
     .to({}, { duration: dur(0.6) });
   tweens.push(intro);
 
-  // ---------- utilidades de pantalla ----------
   const tmpW = new Vector3();
   const minDim = () => {
     const { w, h } = size();
@@ -444,7 +418,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
   const homeWorld = (k: number, out: Vector3) => g.localToWorld(out.copy(homes[k].pos));
   const screenOf = (v: Vector3) => world.toScreen(v);
 
-  /** Siluetas libres donde puede ir la pieza i (la suya o la de su gemela). */
   const candidates = (i: number): number[] => {
     const out: number[] = [];
     if (!filled.has(i)) out.push(i);
@@ -456,7 +429,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     return out;
   };
 
-  /** Silueta libre más cercana (en pantalla) a la posición actual de la pieza. */
   const nearestHome = (i: number): { k: number; d: number } => {
     const cur = screenOf(pieces[i].getWorldPosition(tmpW));
     let best = { k: -1, d: Infinity };
@@ -468,7 +440,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     return best;
   };
 
-  // ---------- guía visual (línea + mano) ----------
   const updateGuide = () => {
     if (dragIndex < 0) return;
     const { k, d } = nearestHome(dragIndex);
@@ -505,7 +476,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     ks.forEach((k) => highlight.add(k));
     const p = pieces[i];
     const h = homes[i];
-    // la pieza "salta" para que se note cuál es
     const ws = waitScale[i];
     tweens.push(gsap.fromTo(p.scale, { x: h.scale.x * ws * 1.3, y: h.scale.y * ws * 1.3, z: h.scale.z * ws * 1.3 }, { x: h.scale.x * ws, y: h.scale.y * ws, z: h.scale.z * ws, duration: 0.5, ease: 'elastic.out(1, 0.4)' }));
     handTl = gsap.timeline({
@@ -524,12 +494,11 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     tweens.push(handTl);
   };
 
-  // ---------- dato curioso ----------
   let factTimer = 0;
   const showFact = (i: number) => {
     const info = infos[i];
     if (!info.fact) return;
-    factEl.innerHTML = `<b>¡${esc(info.name)}!</b><p>${esc(info.fact)}</p>`;
+    factEl.innerHTML = `<b>${tr('', '¡')}${esc(info.name)}!</b><p>${esc(info.fact)}</p>`;
     factEl.hidden = false;
     tweens.push(gsap.fromTo(factEl, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: 'back.out(1.6)' }));
     window.clearTimeout(factTimer);
@@ -538,7 +507,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     }, 5200);
   };
 
-  // ---------- arrastre ----------
   const ray = new Raycaster();
   const ndc = new Vector2();
   const plane = new Plane();
@@ -562,7 +530,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     return pieces.indexOf(o);
   };
 
-  /** Elige la pieza bajo el dedo; si no hay, la más cercana dentro de un radio generoso. */
   const pick = (e: PointerEvent): number => {
     setRay(e);
     const free = pieces.filter((_, i) => !placed.has(i));
@@ -604,7 +571,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     setRay(e);
     ray.ray.intersectPlane(plane, hit);
     grabOffset.copy(tmpW).sub(hit);
-    // la pieza se agranda y gira sola a su posición correcta
     const h = homes[idx];
     const qStart = p.quaternion.clone();
     const proxy = { k: 0 };
@@ -614,7 +580,7 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     );
     highlight.clear();
     candidates(idx).forEach((k) => highlight.add(k));
-    setHint(`Lleva ${infos[idx].name.toLowerCase()} a la silueta que brilla`);
+    setHint(tr(`Take the ${infos[idx].name.toLowerCase()} to the glowing outline`, `Lleva ${infos[idx].name.toLowerCase()} a la silueta que brilla`));
     root.style.cursor = 'grabbing';
     sfx.grab();
     navigator.vibrate?.(10);
@@ -631,7 +597,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     setRay(e);
     if (!ray.ray.intersectPlane(plane, hit)) return;
     const wpos = hit.add(grabOffset);
-    // imán: cerca de la silueta, la pieza es atraída hacia ella
     const p = pieces[dragIndex];
     p.position.copy(g.worldToLocal(wpos.clone()));
     const { k, d } = nearestHome(dragIndex);
@@ -649,7 +614,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     try {
       root.releasePointerCapture(e.pointerId);
     } catch {
-      /* noop */
     }
     root.style.cursor = 'default';
     if (dragIndex < 0) return;
@@ -659,14 +623,13 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     const h = homes[i];
 
     if (!moved) {
-      // toque sin arrastrar: enseñar a dónde va; al segundo toque se coloca sola
       tweens.push(gsap.to(pieces[i].scale, { x: h.scale.x * waitScale[i], y: h.scale.y * waitScale[i], z: h.scale.z * waitScale[i], duration: 0.2 }));
       taps[i]++;
       if (taps[i] >= 3) {
-        setHint('¡Te ayudo con esta!', 'good');
+        setHint(tr('I\'ll help you with this one!', '¡Te ayudo con esta!'), 'good');
         autoPlace(i);
       } else {
-        setHint('¡Mantén presionado y arrastra hasta la silueta!', 'try');
+        setHint(tr('Press and hold, then drag to the outline!', '¡Mantén presionado y arrastra hasta la silueta!'), 'try');
         showHand(i);
       }
       return;
@@ -677,15 +640,14 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
       snap(i, k);
       return;
     }
-    // no llegó: vuelve a su lugar de espera
     fails[i]++;
     sfx.miss();
     if (fails[i] >= 2) {
-      setHint('¡Casi! Te ayudo con esta pieza', 'good');
+      setHint(tr('Almost! I\'ll help you with this piece', '¡Casi! Te ayudo con esta pieza'), 'good');
       autoPlace(i);
       return;
     }
-    setHint('¡Casi! Acércala más a la silueta que brilla', 'try');
+    setHint(tr('Almost! Bring it closer to the glowing outline', '¡Casi! Acércala más a la silueta que brilla'), 'try');
     highlight.clear();
     tweens.push(
       gsap.to(pieces[i].position, { x: spots[i].x, y: spots[i].y, z: spots[i].z, duration: 0.6, ease: 'power2.out' }),
@@ -693,17 +655,12 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     );
   };
 
-  /** Vuela sola a su silueta (ayuda). */
   const autoPlace = (i: number) => {
     const ks = candidates(i);
     if (!ks.length) return;
     snap(i, ks[0], false, true);
   };
 
-  /**
-   * Coloca la pieza i en la silueta k. Si k es la silueta gemela, la pieza se refleja
-   * (escala X negativa) para quedar idéntica a la original.
-   */
   const snap = (i: number, k: number, fast = false, flying = false) => {
     if (placed.has(i) || filled.has(k)) return;
     placed.add(i);
@@ -738,7 +695,7 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
       timers.push(window.setTimeout(() => sfx.snap(), dur(d * 0.7) * 1000));
       showFact(i);
       const left = pieces.length - placed.size;
-      if (left > 0) setHint(left === 1 ? '¡Muy bien! Falta solo 1 pieza' : `¡Muy bien! Faltan ${left} piezas`, 'good');
+      if (left > 0) setHint(left === 1 ? tr('Great! Only 1 piece left', '¡Muy bien! Falta solo 1 pieza') : tr(`Great! ${left} pieces left`, `¡Muy bien! Faltan ${left} piezas`), 'good');
     }
     updateCounter();
     if (placed.size === pieces.length) timers.push(window.setTimeout(() => complete(), dur(d) * 1000 + (fast ? 50 : 900)));
@@ -755,19 +712,18 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     root.removeEventListener('pointercancel', onUp);
   });
 
-  // ---------- botones ----------
   helpBtn.addEventListener('click', () => {
     if (!interactive || finished || dragIndex >= 0) return;
     const i = pieces.findIndex((_, n) => !placed.has(n));
     if (i < 0) return;
-    setHint(`¡Mira! ${infos[i].name} va aquí`, 'good');
+    setHint(tr(`Look! ${infos[i].name} goes here`, `¡Mira! ${infos[i].name} va aquí`), 'good');
     autoPlace(i);
   });
   root.querySelectorAll<HTMLButtonElement>('[data-chip]').forEach((c) =>
     c.addEventListener('click', () => {
       const i = Number(c.dataset.chip);
       if (!interactive || finished || placed.has(i)) return;
-      setHint(`Esta es ${infos[i].name.toLowerCase()}. ¡Arrástrala a su silueta!`);
+      setHint(tr(`This piece: ${infos[i].name.toLowerCase()}. Drag it to its outline!`, `Esta es ${infos[i].name.toLowerCase()}. ¡Arrástrala a su silueta!`));
       showHand(i);
     }),
   );
@@ -789,7 +745,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     });
   });
 
-  // ---------- completado + aterrizaje ----------
   const glowMats = slot.robotMats
     .map((s) => s.m)
     .filter((m): m is MeshStandardMaterial => (m as MeshStandardMaterial).isMeshStandardMaterial === true);
@@ -804,7 +759,7 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
     gsap.set(hand, { opacity: 0 });
     markAssembled(id);
     sfx.done();
-    setHint('¡Robot armado! Iniciando descenso…', 'good');
+    setHint(tr('Robot assembled! Starting descent…', '¡Robot armado! Iniciando descenso…'), 'good');
     ghostRoot.visible = false;
     g.position.copy(basePos);
     g.rotation.z = 0;
@@ -863,7 +818,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
         0.2,
       )
       .fromTo(g.scale, { x: hero.scale * 1.12, y: hero.scale * 1.12, z: hero.scale * 1.12 }, { x: hero.scale, y: hero.scale, z: hero.scale, duration: dur(0.8), ease: 'elastic.out(1, 0.5)' }, 0.25)
-      // aterrizaje
       .add(() => {
         scene.add(ground);
         scene.fog = new Fog(fogColor, 8, 38);
@@ -887,7 +841,7 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
         flames.intensity = 0;
         const at = g.position.clone();
         dust.push(dustBurst(scene, at, data.body === 'mars' ? 0xc0714a : 0xa7a7b0, reducedMotion ? 40 : 160, hero.scale));
-        setHint('¡Aterrizaje confirmado! Cargando el mapa de la misión…', 'good');
+        setHint(tr('Landing confirmed! Loading the mission map…', '¡Aterrizaje confirmado! Cargando el mapa de la misión…'), 'good');
       }, 2.5 + dur(1.9))
       .to(g.scale, { y: hero.scale * 0.9, duration: 0.09, yoyo: true, repeat: 1, ease: 'power1.out' }, 2.5 + dur(1.9))
       .to({}, { duration: dur(1.2) });
@@ -902,7 +856,6 @@ const puzzle: ScreenFactory = ({ root, go, params }) => {
       handTl?.kill();
       timers.forEach((t) => window.clearTimeout(t));
       window.clearTimeout(factTimer);
-      // la limpieza visual se difiere hasta que termine el fade del canvas
       window.setTimeout(() => {
         offFrame();
         disposables.forEach((d) => d());

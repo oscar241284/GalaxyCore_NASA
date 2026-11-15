@@ -1,16 +1,7 @@
-/**
- * SPIRIT · MISIÓN 2 · Detective de rocas.
- *
- * Spirit buscaba pistas de agua antigua en el cráter Gusev. Rocas reales que estudió:
- * Adirondack y Humphrey (basaltos volcánicos), Clovis (con goetita), Pot of Gold (nódulos con
- * hematita), Comanche (carbonatos) y el suelo blanco Gertrude Weise (sílice casi pura).
- * Mecánica: manejar hasta una roca (en el orden que el niño quiera), investigarla con el
- * microscopio y el taladro, y clasificarla: ¿se formó con agua o con lava? Colección en un
- * cuaderno; estrella si acierta al primer intento.
- */
 import type { GameContext } from './index';
 import { brief, injectKit, MER_SVG, say, sfx, stopSpeak, theme } from './lkKit';
 import { rng } from '../ui/moonTexture';
+import { tr } from '../i18n';
 
 type Kind = 'vesicles' | 'dark' | 'crumbly' | 'white' | 'patches' | 'nodules';
 interface Rock {
@@ -18,19 +9,19 @@ interface Rock {
   x: number;
   water: boolean;
   kind: Kind;
-  look: string; // pista del microscopio
-  inside: string; // color interior
-  mineral: string; // lectura del espectrómetro
+  look: string;
+  inside: string;
+  mineral: string;
   why: string;
 }
 
 const ROCKS: Rock[] = [
-  { name: 'Adirondack', x: 330, water: false, kind: 'vesicles', look: 'Roca oscura con agujeritos redondos: burbujas de gas que quedaron atrapadas cuando la lava se enfrió.', inside: '#3f4a3c', mineral: 'Olivino (mineral de lava)', why: 'Los agujeritos de gas y el olivino muestran que nació de lava volcánica.' },
-  { name: 'Clovis', x: 640, water: true, kind: 'crumbly', look: 'Roca blanda que se desmorona, de color amarillento y café.', inside: '#b7793a', mineral: 'Goetita', why: 'La goetita solo se forma cuando hay agua. ¡Pista de agua!' },
-  { name: 'Humphrey', x: 950, water: false, kind: 'dark', look: 'Roca dura y oscura, con cristalitos que brillan.', inside: '#4b4b4f', mineral: 'Basalto con olivino', why: 'Es basalto: lava que se enfrió. Muchas rocas de la llanura de Gusev son así.' },
-  { name: 'Pot of Gold', x: 1250, water: true, kind: 'nodules', look: 'Roca pequeña llena de bolitas que sobresalen, como palomitas.', inside: '#8a4a3a', mineral: 'Hematita', why: 'La hematita de estas bolitas se suele formar con agua.' },
-  { name: 'Comanche', x: 1560, water: true, kind: 'patches', look: 'Roca grande con manchas claras dentro.', inside: '#c9b48e', mineral: 'Carbonatos', why: 'Los carbonatos se forman con agua, y no muy ácida: ¡un lugar más amigable para la vida!' },
-  { name: 'Gertrude Weise', x: 1860, water: true, kind: 'white', look: 'No es roca: es suelo blanquísimo, como talco, que la rueda de Spirit dejó al descubierto.', inside: '#f5f5f0', mineral: 'Sílice casi pura', why: 'Tanta sílice se forma con agua caliente, como la de los géiseres o fuentes termales.' },
+  { name: 'Adirondack', x: 330, water: false, kind: 'vesicles', look: tr('Dark rock with little round holes: gas bubbles that got trapped when the lava cooled.', 'Roca oscura con agujeritos redondos: burbujas de gas que quedaron atrapadas cuando la lava se enfrió.'), inside: '#3f4a3c', mineral: tr('Olivine (a lava mineral)', 'Olivino (mineral de lava)'), why: tr('The gas holes and the olivine show it was born from volcanic lava.', 'Los agujeritos de gas y el olivino muestran que nació de lava volcánica.') },
+  { name: 'Clovis', x: 640, water: true, kind: 'crumbly', look: tr('Soft, crumbly rock, yellowish and brown in color.', 'Roca blanda que se desmorona, de color amarillento y café.'), inside: '#b7793a', mineral: tr('Goethite', 'Goetita'), why: tr('Goethite only forms when there is water. A water clue!', 'La goetita solo se forma cuando hay agua. ¡Pista de agua!') },
+  { name: 'Humphrey', x: 950, water: false, kind: 'dark', look: tr('Hard, dark rock with tiny shiny crystals.', 'Roca dura y oscura, con cristalitos que brillan.'), inside: '#4b4b4f', mineral: tr('Basalt with olivine', 'Basalto con olivino'), why: tr('It is basalt: lava that cooled. Many rocks on the Gusev plain are like this.', 'Es basalto: lava que se enfrió. Muchas rocas de la llanura de Gusev son así.') },
+  { name: 'Pot of Gold', x: 1250, water: true, kind: 'nodules', look: tr('Small rock full of bumps sticking out, like popcorn.', 'Roca pequeña llena de bolitas que sobresalen, como palomitas.'), inside: '#8a4a3a', mineral: tr('Hematite', 'Hematita'), why: tr('The hematite in these little balls usually forms with water.', 'La hematita de estas bolitas se suele formar con agua.') },
+  { name: 'Comanche', x: 1560, water: true, kind: 'patches', look: tr('Big rock with light patches inside.', 'Roca grande con manchas claras dentro.'), inside: '#c9b48e', mineral: tr('Carbonates', 'Carbonatos'), why: tr('Carbonates form with water that is not very acidic: a friendlier place for life!', 'Los carbonatos se forman con agua, y no muy ácida: ¡un lugar más amigable para la vida!') },
+  { name: 'Gertrude Weise', x: 1860, water: true, kind: 'white', look: tr('It is not a rock: it is very white soil, like talc, that Spirit\'s wheel uncovered.', 'No es roca: es suelo blanquísimo, como talco, que la rueda de Spirit dejó al descubierto.'), inside: '#f5f5f0', mineral: tr('Almost pure silica', 'Sílice casi pura'), why: tr('That much silica forms with hot water, like in geysers or hot springs.', 'Tanta sílice se forma con agua caliente, como la de los géiseres o fuentes termales.') },
 ];
 
 const SCENE_W = 2100;
@@ -82,7 +73,6 @@ function inject() {
   document.head.appendChild(s);
 }
 
-/** Dibujo de cada roca en el paisaje. */
 function rockSvg(r: Rock, i: number): string {
   const y = GROUND_Y + 8;
   const shapes: Record<Kind, string> = {
@@ -113,7 +103,6 @@ function scene(): string {
   </svg>`;
 }
 
-/** Vista del microscopio (textura distinta para cada tipo). */
 function drawLens(c: HTMLCanvasElement, r: Rock, drill: number) {
   const g = c.getContext('2d')!;
   const S = c.width;
@@ -183,7 +172,6 @@ function drawLens(c: HTMLCanvasElement, r: Rock, drill: number) {
       g.fill();
     }
   if (drill > 0) {
-    // círculo pulido por el taladro: aparece el interior de la roca
     const rr = (S * 0.34) * drill;
     g.fillStyle = r.inside;
     g.beginPath();
@@ -208,31 +196,31 @@ export default function spRocks({ root, win }: GameContext): () => void {
   const start = () => {
     root.innerHTML = `
       <div class="lk"${theme('#3b82f6', '#93c5fd')}><div class="lk__wrap">
-        <div class="lk-top"><p class="lk-task"><i>2</i>Investiga las 6 rocas y descubre cuáles se formaron con agua.</p></div>
+        <div class="lk-top"><p class="lk-task"><i>2</i>${tr('Investigate the 6 rocks and find out which ones formed with water.', 'Investiga las 6 rocas y descubre cuáles se formaron con agua.')}</p></div>
         <div class="spr__view" data-view>
           <div class="spr__world" data-world>${scene()}<div class="spr__rover" data-rover>${MER_SVG}</div></div>
-          <span class="spr__hint" data-hint>Toca una roca para ir a investigarla</span>
-          <button type="button" class="spr__nav spr__nav--l" data-pan="-1" aria-label="Mirar a la izquierda">◀</button>
-          <button type="button" class="spr__nav spr__nav--r" data-pan="1" aria-label="Mirar a la derecha">▶</button>
+          <span class="spr__hint" data-hint>${tr('Tap a rock to go investigate it', 'Toca una roca para ir a investigarla')}</span>
+          <button type="button" class="spr__nav spr__nav--l" data-pan="-1" aria-label="${tr('Look left', 'Mirar a la izquierda')}">◀</button>
+          <button type="button" class="spr__nav spr__nav--r" data-pan="1" aria-label="${tr('Look right', 'Mirar a la derecha')}">▶</button>
         </div>
         <div class="spr__lab" data-lab hidden>
-          <div class="spr__lens"><canvas width="240" height="240" data-lens></canvas><span data-lenslabel>MICROSCOPIO</span></div>
+          <div class="spr__lens"><canvas width="240" height="240" data-lens></canvas><span data-lenslabel>${tr('MICROSCOPE', 'MICROSCOPIO')}</span></div>
           <div>
             <h3 data-name></h3>
             <div class="spr__tools">
-              <button type="button" class="lk-btn" data-tool="lens">🔍 Microscopio</button>
-              <button type="button" class="lk-btn" data-tool="drill">⚙️ Taladro + espectrómetro</button>
+              <button type="button" class="lk-btn" data-tool="lens">🔍 ${tr('Microscope', 'Microscopio')}</button>
+              <button type="button" class="lk-btn" data-tool="drill">⚙️ ${tr('Drill + spectrometer', 'Taladro + espectrómetro')}</button>
             </div>
             <p class="spr__clue" data-clue1 hidden></p>
             <p class="spr__clue" data-clue2 hidden></p>
             <div class="spr__class">
-              <button type="button" class="lk-btn" data-class="water" disabled>💧 Se formó con agua</button>
-              <button type="button" class="lk-btn" data-class="lava" disabled>🌋 Se formó con lava</button>
+              <button type="button" class="lk-btn" data-class="water" disabled>💧 ${tr('Formed with water', 'Se formó con agua')}</button>
+              <button type="button" class="lk-btn" data-class="lava" disabled>🌋 ${tr('Formed with lava', 'Se formó con lava')}</button>
             </div>
           </div>
         </div>
         <p class="lk-say" data-say></p>
-        <div class="spr__book"><h4>CUADERNO DEL DETECTIVE</h4><div class="spr__slots">${ROCKS.map((r, i) => `<div class="spr__slot" data-slot="${i}"><b>?</b>${r.name}</div>`).join('')}</div></div>
+        <div class="spr__book"><h4>${tr('DETECTIVE NOTEBOOK', 'CUADERNO DEL DETECTIVE')}</h4><div class="spr__slots">${ROCKS.map((r, i) => `<div class="spr__slot" data-slot="${i}"><b>?</b>${r.name}</div>`).join('')}</div></div>
       </div></div>`;
 
     const view = root.querySelector<HTMLElement>('[data-view]')!;
@@ -252,8 +240,8 @@ export default function spRocks({ root, win }: GameContext): () => void {
     let current = -1;
     let driving = false;
     let tries = 0;
-    const solved = new Map<number, boolean>(); // índice → acertó al primer intento
-    say(sayEl, 'Eres el detective de Spirit. Elige una roca, viaja hasta ella y busca pistas con tus herramientas.');
+    const solved = new Map<number, boolean>();
+    say(sayEl, tr('You are Spirit\'s detective. Pick a rock, travel to it and look for clues with your tools.', 'Eres el detective de Spirit. Elige una roca, viaja hasta ella y busca pistas con tus herramientas.'));
 
     const placeRover = () => {
       roverEl.style.left = `${roverX - 65}px`;
@@ -325,7 +313,7 @@ export default function spRocks({ root, win }: GameContext): () => void {
       tries = 0;
       lab.hidden = false;
       root.querySelector('[data-name]')!.textContent = r.name;
-      root.querySelector('[data-lenslabel]')!.textContent = 'CÁMARA';
+      root.querySelector('[data-lenslabel]')!.textContent = tr('CAMERA', 'CÁMARA');
       clue1.hidden = clue2.hidden = true;
       classBtns.forEach((b) => {
         b.disabled = true;
@@ -337,8 +325,8 @@ export default function spRocks({ root, win }: GameContext): () => void {
       g.fillStyle = '#93c5fd';
       g.font = '700 16px system-ui';
       g.textAlign = 'center';
-      g.fillText('Usa una herramienta', 120, 124);
-      say(sayEl, `Llegaste a ${r.name}. Usa el microscopio o el taladro para buscar pistas.`);
+      g.fillText(tr('Use a tool', 'Usa una herramienta'), 120, 124);
+      say(sayEl, tr(`You reached ${r.name}. Use the microscope or the drill to look for clues.`, `Llegaste a ${r.name}. Usa el microscopio o el taladro para buscar pistas.`));
       lab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
 
@@ -351,12 +339,12 @@ export default function spRocks({ root, win }: GameContext): () => void {
         if (tool === 'lens') {
           used.lens = true;
           drawLens(lens, r, used.drill ? 1 : 0);
-          root.querySelector('[data-lenslabel]')!.textContent = 'MICROSCOPIO';
+          root.querySelector('[data-lenslabel]')!.textContent = tr('MICROSCOPE', 'MICROSCOPIO');
           clue1.hidden = false;
           clue1.innerHTML = `🔍 ${r.look}`;
         } else {
           used.drill = true;
-          root.querySelector('[data-lenslabel]')!.textContent = 'TALADRO';
+          root.querySelector('[data-lenslabel]')!.textContent = tr('DRILL', 'TALADRO');
           let k = 0;
           const grind = () => {
             if (!alive) return;
@@ -367,7 +355,7 @@ export default function spRocks({ root, win }: GameContext): () => void {
               requestAnimationFrame(grind);
             } else {
               clue2.hidden = false;
-              clue2.innerHTML = `⚙️ Interior pulido. El espectrómetro detecta: <b>${r.mineral}</b>.`;
+              clue2.innerHTML = `⚙️ ${tr('Inside ground smooth. The spectrometer detects', 'Interior pulido. El espectrómetro detecta')}: <b>${r.mineral}</b>.`;
             }
           };
           grind();
@@ -384,7 +372,7 @@ export default function spRocks({ root, win }: GameContext): () => void {
           tries++;
           sfx.soft();
           b.disabled = true;
-          say(sayEl, `¡Casi! Mira otra vez las pistas${used.lens && used.drill ? '' : ' (prueba la otra herramienta)'}.`, 'warn');
+          say(sayEl, tr(`Almost! Look at the clues again${used.lens && used.drill ? '' : ' (try the other tool)'}.`, `¡Casi! Mira otra vez las pistas${used.lens && used.drill ? '' : ' (prueba la otra herramienta)'}.`), 'warn');
           return;
         }
         sfx.ok();
@@ -396,7 +384,7 @@ export default function spRocks({ root, win }: GameContext): () => void {
         const el = root.querySelector<SVGGElement>(`[data-rock="${current}"]`)!;
         el.classList.add('done');
         el.querySelector('[data-tag]')!.textContent = `${r.water ? '💧' : '🌋'} ${r.name}`;
-        say(sayEl, `¡Bien, detective! ${r.why}`, 'ok');
+        say(sayEl, `${tr('Well done, detective!', '¡Bien, detective!')} ${r.why}`, 'ok');
         classBtns.forEach((x) => (x.disabled = true));
         if (solved.size === ROCKS.length) window.setTimeout(() => alive && finish(), 1800);
         else window.setTimeout(() => alive && (lab.hidden = true), 2600);
@@ -410,11 +398,13 @@ export default function spRocks({ root, win }: GameContext): () => void {
       const box = document.createElement('div');
       box.className = 'lk-learn';
       box.innerHTML = `
-        <h4>¿QUÉ APRENDISTE?</h4>
-        <p style="margin:0 0 8px;font-size:22px;color:#fde047">${'★'.repeat(stars)}<span style="opacity:.3">${'★'.repeat(ROCKS.length - stars)}</span> ${stars}/6 al primer intento</p>
-        <p style="margin:0 0 12px">Las rocas son como un diario del pasado. En la llanura de Gusev, Spirit encontró rocas de <b>lava</b>; en las colinas Columbia
-        encontró <b>goetita, hematita, carbonatos y sílice</b>: pistas de que hace mucho tiempo hubo <b>agua</b> en Marte, ¡incluso agua caliente!</p>
-        <button type="button" class="lk-btn lk-btn--go" data-end>¡Misión cumplida!</button>`;
+        <h4>${tr('WHAT DID YOU LEARN?', '¿QUÉ APRENDISTE?')}</h4>
+        <p style="margin:0 0 8px;font-size:22px;color:#fde047">${'★'.repeat(stars)}<span style="opacity:.3">${'★'.repeat(ROCKS.length - stars)}</span> ${stars}/6 ${tr('on the first try', 'al primer intento')}</p>
+        <p style="margin:0 0 12px">${tr(
+          'Rocks are like a diary of the past. On the Gusev plain, Spirit found <b>lava</b> rocks; in the Columbia Hills it found <b>goethite, hematite, carbonates and silica</b>: clues that long ago there was <b>water</b> on Mars, even hot water!',
+          'Las rocas son como un diario del pasado. En la llanura de Gusev, Spirit encontró rocas de <b>lava</b>; en las colinas Columbia encontró <b>goetita, hematita, carbonatos y sílice</b>: pistas de que hace mucho tiempo hubo <b>agua</b> en Marte, ¡incluso agua caliente!',
+        )}</p>
+        <button type="button" class="lk-btn lk-btn--go" data-end>${tr('Mission accomplished!', '¡Misión cumplida!')}</button>`;
       root.querySelector('.spr__book')!.before(box);
       box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       box.querySelector('[data-end]')!.addEventListener('click', win);
@@ -422,18 +412,18 @@ export default function spRocks({ root, win }: GameContext): () => void {
   };
 
   brief(root, {
-    kicker: 'SPIRIT · MISIÓN 2',
-    title: 'Detective de rocas',
-    text: 'Spirit tenía un microscopio, un taladro para pulir rocas y aparatos que leen de qué están hechas.',
-    goal: 'Viaja a 6 rocas, investígalas y decide: ¿se formaron con agua o con lava?',
+    kicker: tr('SPIRIT · MISSION 2', 'SPIRIT · MISIÓN 2'),
+    title: tr('Rock detective', 'Detective de rocas'),
+    text: tr('Spirit had a microscope, a drill to grind rocks and instruments that read what they are made of.', 'Spirit tenía un microscopio, un taladro para pulir rocas y aparatos que leen de qué están hechas.'),
+    goal: tr('Travel to 6 rocks, investigate them and decide: did they form with water or with lava?', 'Viaja a 6 rocas, investígalas y decide: ¿se formaron con agua o con lava?'),
     art: MER_SVG,
     accent: '#3b82f6',
     soft: '#93c5fd',
     guess: {
-      q: '¿Cómo se puede saber si hubo agua en Marte hace millones de años?',
-      options: ['Estudiando sus rocas y su suelo', 'Escuchando el viento'],
+      q: tr('How can we know if there was water on Mars millions of years ago?', '¿Cómo se puede saber si hubo agua en Marte hace millones de años?'),
+      options: [tr('By studying its rocks and soil', 'Estudiando sus rocas y su suelo'), tr('By listening to the wind', 'Escuchando el viento')],
       correct: 0,
-      why: 'Algunos minerales solo se forman con agua. Si los encuentras en una roca, ¡es una pista de que hubo agua!',
+      why: tr('Some minerals only form with water. If you find them in a rock, it is a clue that there was water!', 'Algunos minerales solo se forman con agua. Si los encuentras en una roca, ¡es una pista de que hubo agua!'),
     },
     onStart: start,
   });

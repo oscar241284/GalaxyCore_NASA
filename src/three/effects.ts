@@ -1,7 +1,3 @@
-/**
- * Efectos ligeros: partículas aditivas (llamas de propulsores, polvo) y destellos.
- * Todo con BufferGeometry + PointsMaterial; sin texturas externas (textura radial en canvas).
- */
 import {
   AdditiveBlending,
   BufferAttribute,
@@ -24,7 +20,6 @@ import {
 import type { Blending, Texture } from 'three';
 
 let glowTex: Texture | null = null;
-/** Textura radial suave compartida (no se libera hasta descargar la página). */
 export function glowTexture(): Texture {
   if (glowTex) return glowTex;
   const c = document.createElement('canvas');
@@ -49,10 +44,6 @@ export interface ParticleOptions {
   opacity?: number;
 }
 
-/**
- * Sistema de partículas en espacio mundo. Con blending aditivo, el color se desvanece
- * hacia `end` (usar negro para que "desaparezca").
- */
 export class ParticleSystem {
   readonly points: Points;
   private pos: Float32Array;
@@ -144,10 +135,6 @@ const _d = new Vector3();
 const _q = new Quaternion();
 const _v = new Vector3();
 
-/**
- * Llamas de propulsores: un cono aditivo pegado a cada thruster + partículas en mundo.
- * `intensity` 0..1 controla tamaño del cono y tasa de emisión.
- */
 export class ThrusterFlames {
   intensity = 0;
   private particles: ParticleSystem;
@@ -171,7 +158,6 @@ export class ThrusterFlames {
     });
     this.smoke.drag = 1.2;
     world.add(this.particles.points, this.smoke.points);
-    // cono con la base en el origen del thruster y la punta hacia -Y local
     this.coneGeo = new ConeGeometry(0.11 * scale, 0.6 * scale, 10, 1, true);
     this.coneGeo.rotateX(Math.PI);
     this.coneGeo.translate(0, -0.3 * scale, 0);
@@ -217,7 +203,6 @@ export class ThrusterFlames {
     }
     this.coneMat.opacity = 0.75 * Math.min(1, k * 1.5);
     this.coreMat.opacity = 0.9 * Math.min(1, k * 1.5);
-    // emisión
     if (k > 0.02 && this.thrusters.length) {
       this.acc += dt * 260 * k;
       while (this.acc >= 1) {
@@ -251,7 +236,6 @@ export class ThrusterFlames {
   }
 }
 
-/** Ráfaga radial de polvo (aterrizaje). Devuelve el sistema para actualizarlo. */
 export function dustBurst(world: Object3D, at: Vector3, color: Color | string | number, count = 140, scale = 1): ParticleSystem {
   const ps = new ParticleSystem({
     max: count,
@@ -274,7 +258,6 @@ export function dustBurst(world: Object3D, at: Vector3, color: Color | string | 
   return ps;
 }
 
-/** Sprite de destello aditivo (para animar su escala/opacidad con GSAP). */
 export function flashSprite(color: Color | string | number = 0xffffff): Sprite {
   const mat = new SpriteMaterial({
     map: glowTexture(),
@@ -295,7 +278,6 @@ export function disposeSprite(s: Sprite): void {
   s.material.dispose();
 }
 
-/** Campo de estrellas 3D (Points) para fondos de escenas. */
 export function starPoints(count = 900, radius = 60): Points {
   const pos = new Float32Array(count * 3);
   const col = new Float32Array(count * 3);

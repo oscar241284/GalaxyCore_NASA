@@ -1,24 +1,20 @@
-/**
- * MISIÓN 2 · Historia del Apolo 11.
- * Fase 1: relato interactivo en 5 capítulos (con ilustración, fecha y navegación).
- * Fase 2: "Ordena la misión": el jugador toca los eventos en orden cronológico.
- */
 import type { GameContext } from './index';
+import { tr } from '../i18n';
 
 interface Chapter {
   date: string;
   title: string;
   text: string;
-  event: string; // texto corto para la fase de ordenar
-  art: string; // SVG interno (viewBox 0 0 200 140)
+  event: string;
+  art: string;
 }
 
 const CHAPTERS: Chapter[] = [
   {
-    date: '16 de julio de 1969',
-    title: 'Despegue',
-    event: 'Despegue del cohete Saturno V',
-    text: 'Desde el Centro Espacial Kennedy, en Florida, el gigantesco cohete Saturno V despegó llevando a tres astronautas: Neil Armstrong, Buzz Aldrin y Michael Collins.',
+    date: tr('July 16, 1969', '16 de julio de 1969'),
+    title: tr('Liftoff', 'Despegue'),
+    event: tr('Saturn V rocket liftoff', 'Despegue del cohete Saturno V'),
+    text: tr('From the Kennedy Space Center in Florida, the giant Saturn V rocket lifted off carrying three astronauts: Neil Armstrong, Buzz Aldrin and Michael Collins.', 'Desde el Centro Espacial Kennedy, en Florida, el gigantesco cohete Saturno V despegó llevando a tres astronautas: Neil Armstrong, Buzz Aldrin y Michael Collins.'),
     art: `<rect x="92" y="20" width="16" height="78" rx="8" fill="#e5e7eb"/>
       <polygon points="92,32 100,6 108,32" fill="#e5e7eb"/>
       <rect x="92" y="54" width="16" height="6" fill="#1a0b33"/>
@@ -27,20 +23,20 @@ const CHAPTERS: Chapter[] = [
       <polygon points="96,98 100,122 104,98" fill="#fff7d6"/>`,
   },
   {
-    date: '19 de julio de 1969',
-    title: 'En órbita lunar',
-    event: 'Llegada a la órbita de la Luna',
-    text: 'Después de tres días de viaje, la nave entró en órbita alrededor de la Luna. Michael Collins se quedó pilotando el módulo de mando Columbia mientras sus compañeros bajaban.',
+    date: tr('July 19, 1969', '19 de julio de 1969'),
+    title: tr('In lunar orbit', 'En órbita lunar'),
+    event: tr('Arrival in lunar orbit', 'Llegada a la órbita de la Luna'),
+    text: tr('After three days of travel, the spacecraft entered orbit around the Moon. Michael Collins stayed behind piloting the command module Columbia while his crewmates went down.', 'Después de tres días de viaje, la nave entró en órbita alrededor de la Luna. Michael Collins se quedó pilotando el módulo de mando Columbia mientras sus compañeros bajaban.'),
     art: `<circle cx="100" cy="76" r="42" fill="#c9ccd3"/>
       <circle cx="84" cy="64" r="8" fill="#6b6e76"/><circle cx="114" cy="92" r="6" fill="#6b6e76"/><circle cx="112" cy="58" r="4" fill="#6b6e76"/>
       <ellipse cx="100" cy="76" rx="80" ry="26" fill="none" stroke="#a855f7" stroke-dasharray="4 5" stroke-width="2"/>
       <rect x="168" y="66" width="16" height="9" rx="2" fill="#e5e7eb"/><polygon points="184,66 192,70.5 184,75" fill="#e5e7eb"/>`,
   },
   {
-    date: '20 de julio de 1969',
-    title: '"El Águila ha aterrizado"',
-    event: 'Alunizaje del módulo Eagle',
-    text: 'Armstrong y Aldrin descendieron en el módulo lunar Eagle. Con alarmas en la computadora y rocas en la zona elegida, Armstrong tomó el control manual y se posó en el Mar de la Tranquilidad.',
+    date: tr('July 20, 1969', '20 de julio de 1969'),
+    title: tr('"The Eagle has landed"', '"El Águila ha aterrizado"'),
+    event: tr('Eagle module Moon landing', 'Alunizaje del módulo Eagle'),
+    text: tr('Armstrong and Aldrin descended in the lunar module Eagle. With computer alarms going off and rocks at the chosen site, Armstrong took manual control and set down in the Sea of Tranquility.', 'Armstrong y Aldrin descendieron en el módulo lunar Eagle. Con alarmas en la computadora y rocas en la zona elegida, Armstrong tomó el control manual y se posó en el Mar de la Tranquilidad.'),
     art: `<rect x="0" y="108" width="200" height="32" fill="#6b6e76"/>
       <ellipse cx="40" cy="116" rx="14" ry="4" fill="#4b4e56"/><ellipse cx="160" cy="122" rx="18" ry="5" fill="#4b4e56"/>
       <rect x="84" y="78" width="32" height="16" fill="#d9a441"/>
@@ -49,10 +45,10 @@ const CHAPTERS: Chapter[] = [
       <path d="M70 110 H82 M118 110 H130" stroke="#c9ccd3" stroke-width="3"/>`,
   },
   {
-    date: '20-21 de julio de 1969',
-    title: 'El primer paso',
-    event: 'Primer paso de Neil Armstrong',
-    text: 'Armstrong bajó la escalera y fue el primer ser humano en pisar la Luna: "Es un pequeño paso para el hombre, un gran salto para la humanidad". Con Aldrin caminaron unas 2 horas y media, recogieron 21,5 kg de rocas y dejaron instrumentos científicos.',
+    date: tr('July 20-21, 1969', '20-21 de julio de 1969'),
+    title: tr('The first step', 'El primer paso'),
+    event: tr('Neil Armstrong\'s first step', 'Primer paso de Neil Armstrong'),
+    text: tr('Armstrong climbed down the ladder and became the first human to step on the Moon: "That\'s one small step for man, one giant leap for mankind". With Aldrin he walked for about 2 and a half hours; they collected 21.5 kg of rocks and left science instruments.', 'Armstrong bajó la escalera y fue el primer ser humano en pisar la Luna: "Es un pequeño paso para el hombre, un gran salto para la humanidad". Con Aldrin caminaron unas 2 horas y media, recogieron 21,5 kg de rocas y dejaron instrumentos científicos.'),
     art: `<rect x="0" y="96" width="200" height="44" fill="#6b6e76"/>
       <g transform="translate(70 62) rotate(-12)">
         <ellipse cx="22" cy="20" rx="16" ry="24" fill="#c9ccd3"/>
@@ -63,10 +59,10 @@ const CHAPTERS: Chapter[] = [
       <rect x="150" y="40" width="3" height="58" fill="#e5e7eb"/><rect x="153" y="40" width="28" height="18" fill="#a855f7"/>`,
   },
   {
-    date: '24 de julio de 1969',
-    title: 'Regreso a casa',
-    event: 'Amerizaje en el océano Pacífico',
-    text: 'Los tres astronautas regresaron en el módulo Columbia y cayeron en el océano Pacífico con paracaídas. Por precaución pasaron unos días en cuarentena. ¡La misión fue un éxito!',
+    date: tr('July 24, 1969', '24 de julio de 1969'),
+    title: tr('Coming home', 'Regreso a casa'),
+    event: tr('Splashdown in the Pacific Ocean', 'Amerizaje en el océano Pacífico'),
+    text: tr('The three astronauts came back in the Columbia module and splashed down in the Pacific Ocean under parachutes. As a precaution they spent a few days in quarantine. The mission was a success!', 'Los tres astronautas regresaron en el módulo Columbia y cayeron en el océano Pacífico con paracaídas. Por precaución pasaron unos días en cuarentena. ¡La misión fue un éxito!'),
     art: `<rect x="0" y="100" width="200" height="40" fill="#1e3a8a"/>
       <path d="M0 104 Q25 96 50 104 T100 104 T150 104 T200 104" fill="none" stroke="#67e8f9" stroke-width="2"/>
       <polygon points="88,100 112,100 106,82 94,82" fill="#c9ccd3"/>
@@ -88,7 +84,6 @@ export default function apollo11Story({ root, win }: GameContext): () => void {
   let page = 0;
   let timer = 0;
 
-  // ---------- fase 1: relato ----------
   const renderStory = () => {
     const c = CHAPTERS[page];
     const last = page === CHAPTERS.length - 1;
@@ -104,9 +99,9 @@ export default function apollo11Story({ root, win }: GameContext): () => void {
           </div>
         </div>
         <div class="story__nav">
-          <button type="button" class="btn btn--ghost" data-prev ${page === 0 ? 'disabled' : ''}>Anterior</button>
+          <button type="button" class="btn btn--ghost" data-prev ${page === 0 ? 'disabled' : ''}>${tr('Previous', 'Anterior')}</button>
           <span class="story__count">${page + 1} / ${CHAPTERS.length}</span>
-          <button type="button" class="btn btn--primary" data-next>${last ? 'Ir al reto' : 'Siguiente'}</button>
+          <button type="button" class="btn btn--primary" data-next>${last ? tr('Go to the challenge', 'Ir al reto') : tr('Next', 'Siguiente')}</button>
         </div>
       </div>`;
     root.querySelector('[data-prev]')!.addEventListener('click', () => {
@@ -123,18 +118,17 @@ export default function apollo11Story({ root, win }: GameContext): () => void {
     root.querySelector<HTMLButtonElement>('[data-next]')!.focus();
   };
 
-  // ---------- fase 2: ordenar ----------
   const renderChallenge = () => {
     let next = 0;
     const pool = shuffle(CHAPTERS.map((c, i) => ({ text: c.event, order: i })));
     root.innerHTML = `
       <div class="story">
-        <h3 class="story__title" style="text-align:center">Ordena la misión</h3>
-        <p class="story__hint">Toca los eventos del Apolo 11 en el orden en que ocurrieron.</p>
+        <h3 class="story__title" style="text-align:center">${tr('Put the mission in order', 'Ordena la misión')}</h3>
+        <p class="story__hint">${tr('Tap the Apollo 11 events in the order they happened.', 'Toca los eventos del Apolo 11 en el orden en que ocurrieron.')}</p>
         <ol class="order__slots">${CHAPTERS.map((_, i) => `<li data-slot="${i}"><span>${i + 1}</span><em></em></li>`).join('')}</ol>
         <div class="order__pool"></div>
         <p class="order__feedback" role="status" aria-live="polite"></p>
-        <div class="story__nav"><button type="button" class="btn btn--ghost" data-review>Repasar la historia</button></div>
+        <div class="story__nav"><button type="button" class="btn btn--ghost" data-review>${tr('Review the story', 'Repasar la historia')}</button></div>
       </div>`;
     const poolEl = root.querySelector<HTMLElement>('.order__pool')!;
     const feedback = root.querySelector<HTMLElement>('.order__feedback')!;
@@ -156,14 +150,14 @@ export default function apollo11Story({ root, win }: GameContext): () => void {
           b.remove();
           next++;
           feedback.className = 'order__feedback ok';
-          feedback.textContent = next < CHAPTERS.length ? '¡Correcto! ¿Qué pasó después?' : '¡Línea de tiempo completa!';
+          feedback.textContent = next < CHAPTERS.length ? tr('Correct! What happened next?', '¡Correcto! ¿Qué pasó después?') : tr('Timeline complete!', '¡Línea de tiempo completa!');
           if (next === CHAPTERS.length) timer = window.setTimeout(win, 900);
         } else {
           b.classList.remove('shake');
           void b.offsetWidth;
           b.classList.add('shake');
           feedback.className = 'order__feedback bad';
-          feedback.textContent = ev.order > next ? 'Eso ocurrió más tarde. Busca un evento anterior.' : 'Ese evento ya pasó.';
+          feedback.textContent = ev.order > next ? tr('That happened later. Look for an earlier event.', 'Eso ocurrió más tarde. Busca un evento anterior.') : tr('That event already happened.', 'Ese evento ya pasó.');
         }
       });
       poolEl.appendChild(b);

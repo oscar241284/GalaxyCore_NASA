@@ -11,8 +11,6 @@ import {
 } from 'three';
 import type { Material } from 'three';
 
-/* Utilidades compartidas por los modelos procedurales (caché de materiales y geometrías). */
-
 const matCache = new Map<string, MeshStandardMaterial>();
 
 export interface MatOpts {
@@ -43,7 +41,6 @@ export function mat(color: string, o: MatOpts = {}): MeshStandardMaterial {
   return m;
 }
 
-/** Paleta realista común. */
 export const M = {
   aluminum: () => mat('#c9ccd1', { metalness: 0.6, roughness: 0.4 }),
   darkAlu: () => mat('#7d828a', { metalness: 0.55, roughness: 0.5 }),
@@ -102,7 +99,6 @@ export function cyl(
 
 const UP = new Vector3(0, 1, 0);
 
-/** Barra (caja delgada) entre dos puntos. */
 export function strut(a: [number, number, number], b: [number, number, number], t: number, material: Material): Mesh {
   const va = new Vector3(...a);
   const vb = new Vector3(...b);
@@ -114,7 +110,6 @@ export function strut(a: [number, number, number], b: [number, number, number], 
   return m;
 }
 
-/** Tubo cilíndrico entre dos puntos. */
 export function rod(a: [number, number, number], b: [number, number, number], r: number, material: Material): Mesh {
   const va = new Vector3(...a);
   const vb = new Vector3(...b);
@@ -126,9 +121,6 @@ export function rod(a: [number, number, number], b: [number, number, number], r:
   return m;
 }
 
-/**
- * Rueda con eje en X. `meshLook` añade una malla de alambre por encima (ruedas del LRV/Lunojod).
- */
 export function wheel(
   r: number,
   w: number,

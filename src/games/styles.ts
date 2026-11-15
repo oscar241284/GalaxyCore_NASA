@@ -1,6 +1,4 @@
-/** Estilos de los minijuegos (se insertan una sola vez en la página). */
 const CSS = `
-/* ---------- contenedor a pantalla completa ---------- */
 .game-overlay {
   position: fixed;
   inset: 0;
@@ -53,7 +51,6 @@ const CSS = `
   overflow-y: auto;
 }
 
-/* ---------- panel de victoria ---------- */
 .game-win {
   position: absolute;
   inset: 0;
@@ -93,7 +90,6 @@ const CSS = `
   color: var(--retro-amber);
 }
 
-/* ---------- Misión 1: aterrizaje ---------- */
 .lander {
   position: absolute;
   inset: 0;
@@ -209,7 +205,6 @@ const CSS = `
   .lander__controls { opacity: 0.55; }
 }
 
-/* ---------- Misión 2: historia ---------- */
 .story {
   width: min(880px, 100%);
   margin: 0 auto;
@@ -342,7 +337,6 @@ const CSS = `
 .order__feedback.ok { color: var(--ok); }
 .order__feedback.bad { color: var(--bad); }
 
-/* ---------- Misión 3: audio en inglés ---------- */
 .audio-fact {
   width: min(720px, 100%);
   margin: 0 auto;
@@ -438,7 +432,6 @@ const CSS = `
 }
 .audio-fact__q { margin-top: 18px; }
 
-/* opciones de respuesta (mismo estilo que el quiz) */
 .game-overlay .quiz__question { margin: 0 0 12px; font-weight: 700; }
 .game-overlay .quiz__options { display: grid; gap: 10px; }
 .game-overlay .quiz__option {
@@ -474,7 +467,6 @@ const CSS = `
 .game-overlay .quiz__option--wrong { border-color: var(--bad); background: rgba(248, 113, 113, 0.12); animation: game-shake 0.35s; }
 .game-overlay .quiz__option--wrong .quiz__letter { background: var(--bad); }
 
-/* ---------- animaciones ---------- */
 @keyframes game-in {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }

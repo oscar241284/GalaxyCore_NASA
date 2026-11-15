@@ -6,7 +6,7 @@ Tipos compartidos: `src/types.ts` (NO modificar sin avisar al orquestador).
 ## Propiedad de archivos
 **Diseñador**
 - `src/styles/*.css` (importados desde `src/styles/index.css`)
-- `src/three/robots/{lrv,lunokhod2,spirit,opportunity}.ts` + `src/three/robots/index.ts` → `export function buildRobot(id: RobotId): RobotModel`
+- `src/three/robots/{lrv,spirit,opportunity}.ts` + `src/three/robots/index.ts` → `export function buildRobot(id: RobotId): RobotModel`
 - `src/ui/mapArt.ts` → `export function mapBackgroundSVG(body: Body, robot: RobotId): string` (markup interno de SVG para viewBox `0 0 1000 600`: terreno, cráteres, relieve; SIN ruta ni niveles)
 - `src/ui/stoneArt.ts` → `export function stoneSVG(body: Body, seed: number): string` (SVG completo de una piedra ~140x110)
 - `src/data/robots.ts` → `export const ROBOTS: Record<RobotId, RobotData>`, `export const ROBOT_ORDER: RobotId[]`, `export const STONES: StoneFact[]` (8, 2 por robot; texto basado en las tarjetas)

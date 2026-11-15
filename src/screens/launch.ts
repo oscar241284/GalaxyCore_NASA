@@ -1,7 +1,3 @@
-/**
- * DESPEGUE: encendido de propulsores → impulso (expo.out) → medio arco hacia la izquierda
- * (CatmullRom) con banking y cabeceo → queda centrado y grande frente a la cámara.
- */
 import gsap from 'gsap';
 import { CatmullRomCurve3, MathUtils, Vector3 } from 'three';
 import type { ScreenFactory } from '../router';
@@ -10,6 +6,7 @@ import { ROBOTS } from '../data/robots';
 import { onFrame } from '../three/stage';
 import { getWorld } from './world';
 import { esc } from '../ui/modal';
+import { tr } from '../i18n';
 
 const TAU = Math.PI * 2;
 
@@ -21,13 +18,11 @@ const launch: ScreenFactory = ({ root, go, params }) => {
   const slot = world.slot(id);
   const g = slot.robot.group;
 
-  root.innerHTML = `<p class="hud-hint">Despegando: <strong>${esc(ROBOTS[id].name)}</strong></p>`;
+  root.innerHTML = `<p class="hud-hint">${tr('Lifting off', 'Despegando')}: <strong>${esc(ROBOTS[id].name)}</strong></p>`;
 
-  // podios restantes se desvanecen
   const fade = { other: 1 };
   const others = world.slots.filter((s) => s !== slot);
 
-  // normalizar el giro del hover y pasar el robot al espacio mundo
   const ry = ((g.rotation.y % TAU) + TAU) % TAU;
   g.rotation.y = ry;
   const baseYaw = { v: ry > Math.PI ? ry - TAU : ry };
@@ -70,8 +65,8 @@ const launch: ScreenFactory = ({ root, go, params }) => {
     g.scale.setScalar(MathUtils.lerp(s0, hero.scale, e));
     curve.getTangentAt(Math.min(t, 0.999), tan);
     const env = Math.sin(Math.PI * t);
-    g.rotation.z = MathUtils.clamp(-tan.x * 0.55, -0.6, 0.6) * env; // banking
-    g.rotation.x = -MathUtils.clamp(tan.y, -1, 1) * 0.28 * env; // cabeceo
+    g.rotation.z = MathUtils.clamp(-tan.x * 0.55, -0.6, 0.6) * env;
+    g.rotation.x = -MathUtils.clamp(tan.y, -1, 1) * 0.28 * env;
     g.rotation.y = baseYaw.v + Math.atan2(tan.x, Math.max(0.2, tan.z + 0.6)) * 0.45 * env;
     for (const o of others) {
       world.fadePodium(o, fade.other);

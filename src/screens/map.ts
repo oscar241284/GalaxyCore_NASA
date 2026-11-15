@@ -1,10 +1,3 @@
-/**
- * MAPA: fondo SVG (mapBackgroundSVG) → animación de la ruta punteada (revelada con una
- * máscara cuyo trazo sólido anima stroke-dashoffset) + ícono del robot recorriéndola →
- * 4 niveles numerados. Click en nivel → minijuego (src/games) si el nivel tiene uno; si no,
- * quiz (tarjeta + pregunta). Al ganar se marca el nivel.
- * Los niveles se desbloquean en orden: el nivel N solo se abre al completar el N-1.
- */
 import gsap from 'gsap';
 import type { ScreenFactory } from '../router';
 import { dur } from '../router';
@@ -15,10 +8,10 @@ import { esc, openModal, toast } from '../ui/modal';
 import { QUIZZES } from '../data/quizzes';
 import { buildQuiz } from '../ui/quiz';
 import { getGame, openGame } from '../games';
+import { tr } from '../i18n';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/** Estilos de niveles bloqueados / siguiente nivel (se insertan una sola vez). */
 const LOCK_CSS = `
 .level-node--locked { cursor: not-allowed !important; animation: none !important; }
 .level-node--locked .level-node__circle { fill: #15131f; stroke: #4b4760; stroke-dasharray: 5 4; }
@@ -41,10 +34,8 @@ function injectLockStyles(): void {
   document.head.appendChild(st);
 }
 
-/** Un nivel está desbloqueado si es el primero o si el anterior ya se completó. */
 const isUnlocked = (flags: readonly boolean[], i: number) => i === 0 || flags[i - 1];
 
-/** Catmull-Rom → Bézier cúbica: ruta suave que pasa por todos los puntos. */
 export function smoothPath(pts: [number, number][]): string {
   if (pts.length < 2) return '';
   let d = `M${pts[0][0]},${pts[0][1]}`;
@@ -74,7 +65,7 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
     <div class="map-screen">
       <div class="map map--cover" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;aspect-ratio:auto;border:0;border-radius:0;z-index:0">
       <svg viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" role="img"
-        aria-label="Mapa de la ruta de ${esc(data.name)}">
+        aria-label="${tr('Route map of', 'Mapa de la ruta de')} ${esc(data.name)}">
         <g class="map__bg">${mapBackgroundSVG(data.body, id)}</g>
         <defs>
           <mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="600">
@@ -90,9 +81,9 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
         <g class="map__levels"></g>
       </svg>
       </div>
-      <button class="btn btn--back" type="button" data-back aria-label="Volver a los robots">Volver a los robots</button>
+      <button class="btn btn--back" type="button" data-back aria-label="${tr('Back to the robots', 'Volver a los robots')}">${tr('Back to the robots', 'Volver a los robots')}</button>
       <h2 class="map__title" style="position:relative;z-index:2;margin-bottom:auto">${esc(data.name)}<small>${esc(data.mission)}</small></h2>
-      <p class="hud-hint" data-hint style="z-index:2">Trazando la ruta de la misión…</p>
+      <p class="hud-hint" data-hint style="z-index:2">${tr('Plotting the mission route…', 'Trazando la ruta de la misión…')}</p>
     </div>`;
 
   const svg = root.querySelector<SVGSVGElement>('.map svg')!;
@@ -102,7 +93,6 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
   const hint = root.querySelector<HTMLElement>('[data-hint]')!;
   root.querySelector('[data-back]')!.addEventListener('click', () => go('podiums'));
 
-  // cubrir en horizontal; en móvil vertical usar "meet" para no perder nodos
   const fitMap = () => {
     svg.setAttribute('preserveAspectRatio', window.innerHeight > window.innerWidth ? 'xMidYMid meet' : 'xMidYMid slice');
   };
@@ -115,10 +105,8 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
 
   const tl = gsap.timeline();
   const prog = { v: 0 };
-  // 1) mapa
   tl.from(svg.querySelector('.map__bg'), { opacity: 0, duration: dur(0.8), ease: 'power1.out' })
     .from(root.querySelector('.map__title'), { opacity: 0, y: -12, duration: dur(0.5) }, '-=0.3')
-    // 2) ruta
     .set(robotIcon, { opacity: 1 })
     .to(prog, {
       v: 1,
@@ -130,13 +118,11 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
         robotIcon.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
       },
     })
-    // 3) niveles
     .add(() => buildLevels());
 
   const nodes: SVGGElement[] = [];
   const labels: string[] = data.levels.map((lv, i) => getGame(id, i)?.title ?? lv.title);
 
-  /** Aplica a cada nodo su estado: realizado, siguiente (para jugar) o bloqueado. */
   const refreshStates = () => {
     const flags = getState().levels[id];
     const next = flags.findIndex((f, i) => !f && isUnlocked(flags, i));
@@ -149,11 +135,11 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
       g.setAttribute('aria-disabled', String(locked));
       g.setAttribute(
         'aria-label',
-        `Nivel ${i + 1}: ${labels[i]}${flags[i] ? ' (realizado)' : locked ? ' (bloqueado)' : ''}`,
+        `${tr('Level', 'Nivel')} ${i + 1}: ${labels[i]}${flags[i] ? tr(' (done)', ' (realizado)') : locked ? tr(' (locked)', ' (bloqueado)') : ''}`,
       );
     });
-    if (next >= 0) hint.textContent = next === 0 ? 'Empieza por el nivel 1' : `¡Sigue con el nivel ${next + 1}!`;
-    else hint.textContent = '¡Completaste todos los niveles de este robot!';
+    if (next >= 0) hint.textContent = next === 0 ? tr('Start with level 1', 'Empieza por el nivel 1') : tr(`Go on to level ${next + 1}!`, `¡Sigue con el nivel ${next + 1}!`);
+    else hint.textContent = tr('You completed all the levels for this robot!', '¡Completaste todos los niveles de este robot!');
   };
 
   const buildLevels = () => {
@@ -199,21 +185,20 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
 
   const completeLevel = (i: number) => {
     if (getState().levels[id][i]) {
-      toast(`Nivel ${i + 1} completado otra vez`);
+      toast(tr(`Level ${i + 1} completed again`, `Nivel ${i + 1} completado otra vez`));
       return;
     }
     markLevel(id, i);
     refreshStates();
     if (robotComplete(id)) {
-      toast(`¡${data.name}: 4/4 niveles completados!`);
+      toast(tr(`${data.name}: 4/4 levels completed!`, `¡${data.name}: 4/4 niveles completados!`));
       return;
     }
-    toast(`Nivel ${i + 1} superado · +50 pts`);
+    toast(tr(`Level ${i + 1} passed · +50 pts`, `Nivel ${i + 1} superado · +50 pts`));
     const nextNode = nodes[i + 1];
     if (nextNode) {
-      // animación de desbloqueo del siguiente nivel
       window.setTimeout(() => {
-        toast(`¡Nivel ${i + 2} desbloqueado!`);
+        toast(tr(`Level ${i + 2} unlocked!`, `¡Nivel ${i + 2} desbloqueado!`));
         gsap.fromTo(
           nextNode.querySelector('.level-node__inner'),
           { scale: 1.6, transformOrigin: '50% 50%' },
@@ -223,11 +208,10 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
     }
   };
 
-  /** Feedback al tocar un nivel bloqueado. */
   const denyLocked = (i: number, node: SVGGElement) => {
     const flags = getState().levels[id];
     const need = flags.findIndex((f, n) => !f && isUnlocked(flags, n));
-    toast(`Nivel bloqueado: completa primero el nivel ${need + 1}`);
+    toast(tr(`Level locked: complete level ${need + 1} first`, `Nivel bloqueado: completa primero el nivel ${need + 1}`));
     gsap.fromTo(
       node.querySelector('.level-node__inner'),
       { x: -6 },
@@ -248,24 +232,21 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
     const lv = data.levels[i];
     const game = getGame(id, i);
 
-    // nivel bloqueado: hay que terminar el anterior
     if (!isUnlocked(getState().levels[id], i)) {
       denyLocked(i, node);
       return;
     }
 
-    // nivel con minijuego: siempre se puede jugar (también para repetirlo)
     if (game) {
       openGame(game, i + 1, () => completeLevel(i));
       return;
     }
 
-    // nivel de quiz ya superado: mostrar su tarjeta en un modal centrado
     if (getState().levels[id][i]) {
       openModal({
         title: lv.card.title,
         body: lv.card.text,
-        actions: [{ label: 'Cerrar', variant: 'ghost' }],
+        actions: [{ label: tr('Close', 'Cerrar'), variant: 'ghost' }],
       });
       return;
     }
@@ -275,9 +256,9 @@ const mapScreen: ScreenFactory = ({ root, go, params }) => {
       completeLevel(i);
     });
     closeQuiz = openModal({
-      title: `Nivel ${i + 1} · ${lv.title}`,
+      title: `${tr('Level', 'Nivel')} ${i + 1} · ${lv.title}`,
       body,
-      actions: [{ label: 'Cerrar', variant: 'ghost' }],
+      actions: [{ label: tr('Close', 'Cerrar'), variant: 'ghost' }],
     });
   };
 

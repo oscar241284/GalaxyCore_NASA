@@ -1,18 +1,10 @@
-/**
- * OPPORTUNITY · MISIÓN 2 · Las bolitas azules (3D)
- *
- * Dentro del cráter Eagle, Opportunity encontró rocas en capas y miles de esferitas de
- * hematita de pocos milímetros («blueberries»), que suelen formarse cuando el agua se filtra
- * entre las rocas. Mecánica: exploración libre manejando el rover; un radar de hematita
- * (con sonido que se acelera al acercarse) ayuda a encontrar 7 grupos; con el microscopio
- * se ven de cerca y se guardan en la colección.
- */
 import { AdditiveBlending, BoxGeometry, CanvasTexture, CylinderGeometry, Group, InstancedMesh, Matrix4, Mesh, MeshStandardMaterial, Quaternion, SphereGeometry, Sprite, SpriteMaterial, Vector3 } from 'three';
 import type { GameContext } from '../index';
 import { brief, MER_SVG, sfx, stopSpeak } from '../lkKit';
 import { createControls, createRover, createWorld, followCam } from './world';
 import { mountOp, noWebGL } from './opUi';
 import { rng } from '../../ui/moonTexture';
+import { tr } from '../../i18n';
 
 const EAGLE = { x: 0, z: 0, r: 16, depth: 3, rim: 0.6 };
 const SPOTS = [
@@ -25,17 +17,16 @@ const SPOTS = [
   { x: 12.4, z: 6.5 },
 ];
 const FACTS = [
-  '¡Son diminutas! Cada bolita mide pocos milímetros, como una semilla.',
-  'Están hechas de hematita, un mineral que tiene hierro.',
-  'Estas bolitas suelen formarse cuando el agua se filtra lentamente entre las rocas.',
-  'Los científicos las llamaron «blueberries» (arándanos) por su forma y su color en las fotos.',
-  'Las rocas en capas del borde se formaron con sedimentos y agua hace muchísimo tiempo.',
-  'Desde la órbita ya se había detectado hematita aquí: por eso eligieron este lugar para aterrizar.',
-  'Al gastarse la roca, las bolitas quedan sueltas en el suelo porque son más duras.',
+  tr('They are tiny! Each little ball is just a few millimeters, like a seed.', '¡Son diminutas! Cada bolita mide pocos milímetros, como una semilla.'),
+  tr('They are made of hematite, a mineral that contains iron.', 'Están hechas de hematita, un mineral que tiene hierro.'),
+  tr('These little balls usually form when water slowly seeps through rocks.', 'Estas bolitas suelen formarse cuando el agua se filtra lentamente entre las rocas.'),
+  tr('Scientists called them «blueberries» because of their shape and color in the photos.', 'Los científicos las llamaron «blueberries» (arándanos) por su forma y su color en las fotos.'),
+  tr('The layered rocks at the rim formed from sediment and water a very long time ago.', 'Las rocas en capas del borde se formaron con sedimentos y agua hace muchísimo tiempo.'),
+  tr('Hematite had already been detected here from orbit: that is why they chose this place to land.', 'Desde la órbita ya se había detectado hematita aquí: por eso eligieron este lugar para aterrizar.'),
+  tr('As the rock wears away, the little balls are left loose on the ground because they are harder.', 'Al gastarse la roca, las bolitas quedan sueltas en el suelo porque son más duras.'),
 ];
 const ARC = { from: -0.6, to: 1.9, r0: 13.2, r1: 15.4 };
 
-/** Vista del microscopio: bolitas sobre roca en capas. */
 function closeup(seed: number): HTMLCanvasElement {
   const S = 320;
   const c = document.createElement('canvas');
@@ -80,7 +71,7 @@ export default function opBerries({ root, win }: GameContext): () => void {
   let cleanup: (() => void) | null = null;
 
   const start = () => {
-    const ui = mountOp(root, '🔍 Encuentra los <b>7 grupos de bolitas de hematita</b>. Sigue el radar: suena más rápido cuando estás cerca.');
+    const ui = mountOp(root, tr('🔍 Find the <b>7 groups of hematite balls</b>. Follow the radar: it beeps faster when you are close.', '🔍 Encuentra los <b>7 grupos de bolitas de hematita</b>. Sigue el radar: suena más rápido cuando estás cerca.'));
     const world = createWorld(ui.canvasHost, { size: 160, seg: 260, seed: 5, hills: 0.8, craters: [EAGLE], rocks: 260, clear: [{ x: 0, z: 0, r: 11 }] });
     if (!world) return noWebGL(root, win);
     world.setTime(0.4);
@@ -88,7 +79,6 @@ export default function opBerries({ root, win }: GameContext): () => void {
     const rover = createRover(world, -4, -7, 0.4);
     const cam = followCam(world, () => rover, ui.canvasHost);
 
-    // ---------- afloramiento en capas (borde interior) ----------
     const slabMat = new MeshStandardMaterial({ color: '#c9a37a', roughness: 0.9, flatShading: true });
     const slabs = new InstancedMesh(new BoxGeometry(1.5, 0.28, 1.1), slabMat, 240);
     slabs.castShadow = slabs.receiveShadow = true;
@@ -116,7 +106,6 @@ export default function opBerries({ root, win }: GameContext): () => void {
       return d > ARC.r0 && d < ARC.r1 + 0.6 && a > ARC.from && a < ARC.to;
     };
 
-    // ---------- grupos de bolitas ----------
     const berryMat = new MeshStandardMaterial({ color: '#4f5d70', metalness: 0.35, roughness: 0.35 });
     const glowTex = (() => {
       const c = document.createElement('canvas');
@@ -154,7 +143,6 @@ export default function opBerries({ root, win }: GameContext): () => void {
     });
     const flagMat = new MeshStandardMaterial({ color: '#f59e0b', emissive: '#f59e0b', emissiveIntensity: 0.4 });
 
-    // ---------- radar ----------
     const radar = document.createElement('canvas');
     radar.width = radar.height = 150;
     radar.style.cssText = 'width:120px;height:120px;border-radius:50%;display:block';
@@ -177,7 +165,7 @@ export default function opBerries({ root, win }: GameContext): () => void {
     let near: (typeof spots)[number] | null = null;
     let beepT = 0;
     let open = false;
-    ui.say('Maneja con el joystick o las flechas. Arrastra la pantalla para mirar alrededor. ¡El radar te guía!');
+    ui.say(tr('Drive with the joystick or the arrow keys. Drag the screen to look around. The radar guides you!', 'Maneja con el joystick o las flechas. Arrastra la pantalla para mirar alrededor. ¡El radar te guía!'));
 
     const openScope = () => {
       if (!near || open) return;
@@ -186,10 +174,10 @@ export default function opBerries({ root, win }: GameContext): () => void {
       const idx = spots.indexOf(s);
       sfx.ok();
       const panel = ui.panel(`
-        <p class="lk-brief__kicker">MICROSCOPIO · GRUPO ${collected + 1} DE 7</p>
+        <p class="lk-brief__kicker">${tr('MICROSCOPE · GROUP', 'MICROSCOPIO · GRUPO')} ${collected + 1} ${tr('OF', 'DE')} 7</p>
         <div data-img style="display:grid;place-items:center;margin:10px 0"></div>
         <p style="margin:0 0 14px;font-size:17px;line-height:1.5">${FACTS[collected]}</p>
-        <button type="button" class="lk-btn lk-btn--go" data-save>💾 Guardar en la colección</button>`);
+        <button type="button" class="lk-btn lk-btn--go" data-save>💾 ${tr('Save to the collection', 'Guardar en la colección')}</button>`);
       const img = closeup(idx);
       img.style.cssText = 'width:min(300px,70vw);height:auto;border-radius:50%;border:6px solid #1f2937;box-shadow:0 0 0 3px #fcd34d';
       panel.querySelector('[data-img]')!.appendChild(img);
@@ -213,7 +201,7 @@ export default function opBerries({ root, win }: GameContext): () => void {
         if (collected >= SPOTS.length) finish();
         else {
           ui.toast(`🔵 ${collected} / 7`, 1200);
-          ui.say(`¡Guardado! Te faltan ${SPOTS.length - collected}. Sigue el radar.`, 'ok');
+          ui.say(tr(`Saved! ${SPOTS.length - collected} to go. Follow the radar.`, `¡Guardado! Te faltan ${SPOTS.length - collected}. Sigue el radar.`), 'ok');
         }
       });
     };
@@ -231,7 +219,6 @@ export default function opBerries({ root, win }: GameContext): () => void {
       rover.update(dt, frozen ? 0 : controls.throttle, frozen ? 0 : controls.steer, blocked);
       cam.update(dt);
       world.dust.update(dt, rover.group.position);
-      // buscar el grupo más cercano
       let best: (typeof spots)[number] | null = null;
       let bd = 1e9;
       for (const s of spots) {
@@ -247,10 +234,9 @@ export default function opBerries({ root, win }: GameContext): () => void {
       near = best && bd < 2.4 ? best : null;
       btn.hidden = !near || open;
       if (near && !wasNear) {
-        ui.say('¡Estás junto a un grupo de bolitas! Usa el microscopio.', 'ok');
+        ui.say(tr('You are next to a group of little balls! Use the microscope.', '¡Estás junto a un grupo de bolitas! Usa el microscopio.'), 'ok');
         sfx.beep();
       }
-      // pitido del radar
       if (best && bd < RANGE && !open) {
         beepT -= dt;
         if (beepT <= 0) {
@@ -258,7 +244,6 @@ export default function opBerries({ root, win }: GameContext): () => void {
           beepT = 0.15 + (bd / RANGE) * 1.3;
         }
       }
-      // dibujar radar
       const C = 75;
       rg.clearRect(0, 0, 150, 150);
       rg.fillStyle = 'rgba(10,25,20,.85)';
@@ -283,7 +268,6 @@ export default function opBerries({ root, win }: GameContext): () => void {
         const dz = s.z - rover.z;
         const d = Math.hypot(dx, dz);
         if (d > RANGE) continue;
-        // girar al rumbo del rover (arriba = hacia adelante)
         const a = Math.atan2(dx, dz) - rover.heading;
         const px = C - Math.sin(a) * (d / RANGE) * 70;
         const py = C - Math.cos(a) * (d / RANGE) * 70;
@@ -299,18 +283,20 @@ export default function opBerries({ root, win }: GameContext): () => void {
       rg.lineTo(C + 6, C + 6);
       rg.closePath();
       rg.fill();
-      ui.card('n', 'BOLITAS', `🔵 ${collected} / 7`);
-      ui.card('sig', 'SEÑAL DE HEMATITA', bd < RANGE ? (bd < 4 ? '¡FUERTE!' : bd < 9 ? 'media' : 'débil') : '—');
+      ui.card('n', tr('BALLS', 'BOLITAS'), `🔵 ${collected} / 7`);
+      ui.card('sig', tr('HEMATITE SIGNAL', 'SEÑAL DE HEMATITA'), bd < RANGE ? (bd < 4 ? tr('STRONG!', '¡FUERTE!') : bd < 9 ? tr('medium', 'media') : tr('weak', 'débil')) : '—');
     });
 
     const finish = () => {
       sfx.win();
       ui.panel(`
-        <p class="lk-brief__kicker">¿QUÉ APRENDISTE?</p>
-        <h3 style="margin:6px 0 10px;font-family:var(--font-ui);font-size:26px">🔵 ¡Colección completa!</h3>
-        <p style="margin:0 0 14px;line-height:1.55">Las «blueberries» de hematita y las rocas en capas del cráter Eagle fueron una de las
-        primeras pruebas fuertes de que en Marte <b>hubo agua</b> hace mucho tiempo. ¡Y Opportunity las encontró en sus primeras semanas en Marte!</p>
-        <button type="button" class="lk-btn lk-btn--go" data-end>¡Misión cumplida!</button>`).querySelector('[data-end]')!.addEventListener('click', win);
+        <p class="lk-brief__kicker">${tr('WHAT DID YOU LEARN?', '¿QUÉ APRENDISTE?')}</p>
+        <h3 style="margin:6px 0 10px;font-family:var(--font-ui);font-size:26px">${tr('🔵 Collection complete!', '🔵 ¡Colección completa!')}</h3>
+        <p style="margin:0 0 14px;line-height:1.55">${tr(
+          'The hematite «blueberries» and the layered rocks of Eagle crater were some of the first strong evidence that Mars <b>had water</b> long ago. And Opportunity found them in its first weeks on Mars!',
+          'Las «blueberries» de hematita y las rocas en capas del cráter Eagle fueron una de las primeras pruebas fuertes de que en Marte <b>hubo agua</b> hace mucho tiempo. ¡Y Opportunity las encontró en sus primeras semanas en Marte!',
+        )}</p>
+        <button type="button" class="lk-btn lk-btn--go" data-end>${tr('Mission accomplished!', '¡Misión cumplida!')}</button>`).querySelector('[data-end]')!.addEventListener('click', win);
     };
 
     world.start();
@@ -324,18 +310,18 @@ export default function opBerries({ root, win }: GameContext): () => void {
   };
 
   brief(root, {
-    kicker: 'OPPORTUNITY · MISIÓN 2',
-    title: 'Las bolitas azules',
-    text: 'Dentro del cráter Eagle, Opportunity vio miles de bolitas diminutas en el suelo y en las rocas.',
-    goal: 'Maneja el rover, sigue el radar de hematita y encuentra 7 grupos de bolitas.',
+    kicker: tr('OPPORTUNITY · MISSION 2', 'OPPORTUNITY · MISIÓN 2'),
+    title: tr('The blueberries', 'Las bolitas azules'),
+    text: tr('Inside Eagle crater, Opportunity saw thousands of tiny balls on the ground and in the rocks.', 'Dentro del cráter Eagle, Opportunity vio miles de bolitas diminutas en el suelo y en las rocas.'),
+    goal: tr('Drive the rover, follow the hematite radar and find 7 groups of little balls.', 'Maneja el rover, sigue el radar de hematita y encuentra 7 grupos de bolitas.'),
     art: MER_SVG,
     accent: '#f59e0b',
     soft: '#fcd34d',
     guess: {
-      q: '¿Qué tamaño tienen las «bolitas azules» de Marte?',
-      options: ['Como una pelota de fútbol', 'Pocos milímetros, como una semilla'],
+      q: tr('How big are the Martian «blueberries»?', '¿Qué tamaño tienen las «bolitas azules» de Marte?'),
+      options: [tr('Like a soccer ball', 'Como una pelota de fútbol'), tr('A few millimeters, like a seed', 'Pocos milímetros, como una semilla')],
       correct: 1,
-      why: 'Son diminutas: pocos milímetros. Solo se ven bien con el microscopio del rover.',
+      why: tr('They are tiny: a few millimeters. You can only see them well with the rover\'s microscope.', 'Son diminutas: pocos milímetros. Solo se ven bien con el microscopio del rover.'),
     },
     onStart: start,
   });

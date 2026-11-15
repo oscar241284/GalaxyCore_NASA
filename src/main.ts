@@ -1,15 +1,11 @@
 import './styles/index.css';
-import { go, initRouter } from './router';
+import { takeResume } from './i18n';
+import { go, initRouter, onScreenChange, type ScreenId, type ScreenParams } from './router';
+import { initMusic, setMusicTheme } from './audio/music';
 import type { RobotId } from './types';
 import { ALL_ROBOTS, debugCompleteAll, getState, loadState } from './store';
 import { mountHeader } from './ui/header';
 
-/**
- * Flags de depuración (?debug=...):
- *   ?debug=allcomplete        → marca los 16 niveles y los 4 robots como completados (no se guarda)
- *   ?debug=robot=lrv          → salta directo al puzzle del robot indicado
- *   ?debug=allcomplete,robot=spirit  → ambos (separados por coma)
- */
 function parseDebug(): { allComplete: boolean; robot: RobotId | null } {
   const raw = new URLSearchParams(location.search).getAll('debug').join(',');
   const parts = raw.split(',').map((p) => p.trim()).filter(Boolean);
@@ -34,10 +30,21 @@ loadState();
 const debug = parseDebug();
 if (debug.allComplete) debugCompleteAll();
 if (debug.robot && !getState().name) {
-  // nombre provisional solo en memoria para poder probar el puzzle directamente
-  (getState() as { name: string }).name = 'Astronauta';
+  (getState() as { name: string }).name = 'Astronaut';
 }
 
+initMusic();
+onScreenChange((id) => setMusicTheme(id));
 initRouter(screens);
+const RESUMABLE: ScreenId[] = ['home', 'podiums', 'explore', 'map'];
+const resume = takeResume();
+
 if (debug.robot) go('puzzle', { robot: debug.robot, direct: true });
+else if (
+  resume &&
+  (getState().name || resume.screen === 'explore') &&
+  (RESUMABLE as string[]).includes(resume.screen) &&
+  (resume.screen !== 'map' || resume.params.robot)
+)
+  go(resume.screen as ScreenId, resume.params as ScreenParams);
 else go('home');

@@ -1,4 +1,3 @@
-/** Fondo de estrellas en canvas 2D: 3 capas con parallax (puntero) y titileo. */
 import { reducedMotion } from '../router';
 
 interface Star {
@@ -74,7 +73,6 @@ export function createStarfield(host: HTMLElement, density = 1): Starfield {
     ctx.clearRect(0, 0, w, h);
     for (const s of stars) {
       const depth = (s.layer + 1) * 10;
-      // deriva lenta + parallax
       let x = s.x - px * depth * 2 + (reducedMotion ? 0 : time * (s.layer + 1) * 1.5);
       const y = s.y - py * depth * 2;
       x = ((x % w) + w) % w;
@@ -104,7 +102,6 @@ export function createStarfield(host: HTMLElement, density = 1): Starfield {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointermove', onMove);
-      // el canvas se queda (congelado) para el fade-out; se elimina con su pantalla
     },
   };
 }
