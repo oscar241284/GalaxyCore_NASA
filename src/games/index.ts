@@ -4,6 +4,7 @@ import lunarLanding from './lunarLanding';
 import apollo11Story from './apollo11Story';
 import audioFact from './audioFact';
 import { withIntro } from './introVideo';
+import { HOLE_IN_ONE } from './opportunity';
 import spAirbags from './spAirbags';
 import spRocks from './spRocks';
 import spWheel from './spWheel';
@@ -58,7 +59,7 @@ export const GAMES: Partial<Record<RobotId, (LevelGame | undefined)[]>> = {
     { title: tr('Stuck', 'Atrapado'), subtitle: tr('Mission 4 · Get out of the sand', 'Misión 4 · Sal de la arena'), play: spSand },
   ],
   opportunity: [
-    { title: tr('Hole in one', 'Hoyo en uno'), subtitle: tr('Mission 1 · Land inside Eagle crater', 'Misión 1 · Aterriza dentro del cráter Eagle'), play: lazyGame(() => import('./op3d/opLanding')) },
+    HOLE_IN_ONE,
     { title: tr('Blueberries', 'Bolitas azules'), subtitle: tr('Mission 2 · Search for hematite in Eagle crater', 'Misión 2 · Busca hematita en el cráter Eagle'), play: lazyGame(() => import('./op3d/opBerries')) },
     { title: tr('Solar power', 'Energía solar'), subtitle: tr('Mission 3 · Travel to Endeavour', 'Misión 3 · Viaja hasta Endeavour'), play: lazyGame(() => import('./op3d/opSolar')) },
     { title: tr('The great storm', 'La gran tormenta'), subtitle: tr('Mission 4 · Survive the 2018 storm', 'Misión 4 · Resiste la tormenta de 2018'), play: lazyGame(() => import('./op3d/opStorm')) },
