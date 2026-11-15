@@ -1,17 +1,15 @@
 /**
- * Minijuegos de OPPORTUNITY, en el mismo orden que sus 4 niveles del mapa.
- * `undefined` = ese nivel todavía usa el quiz por defecto.
+ * Minijuegos de OPPORTUNITY que viven en esta carpeta. Se registran en `src/games/index.ts`,
+ * dentro de `GAMES.opportunity`, en el orden de los niveles del mapa.
  *
- * Para añadir el siguiente: crear su carpeta (como `holeInOne/`) con un `index.ts` cuyo
- * `export default` sea un `MiniGame`, y sustituir aquí el `undefined` correspondiente.
- * Lo común a los cuatro (sonido, estilos `op-`, carga diferida) vive en `shared/`.
+ * Lo común (sonido, estilos `op-`, carga diferida) está en `shared/`.
  */
 import type { LevelGame } from '../index';
 import { lazyGame } from './shared/lazy';
 
-export const OPPORTUNITY_GAMES: (LevelGame | undefined)[] = [
-  { title: 'Hoyo en uno', subtitle: 'Misión 1 · Rebota hasta el cráter Eagle', play: lazyGame(() => import('./holeInOne')) },
-  undefined, // Misión 2 · Las bolitas azules
-  undefined, // Misión 3 · Energía solar
-  undefined, // Misión 4 · La gran tormenta
-];
+/** Nivel 1 · aterrizaje con airbags hasta el cráter Eagle. */
+export const HOLE_IN_ONE: LevelGame = {
+  title: 'Hoyo en uno',
+  subtitle: 'Misión 1 · Rebota hasta el cráter Eagle',
+  play: lazyGame(() => import('./holeInOne')),
+};
