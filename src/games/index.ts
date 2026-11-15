@@ -11,6 +11,7 @@ import lunarLanding from './lunarLanding';
 import apollo11Story from './apollo11Story';
 import audioFact from './audioFact';
 import { withIntro } from './introVideo';
+import { OPPORTUNITY_GAMES } from './opportunity';
 
 export interface GameContext {
   root: HTMLElement;
@@ -34,6 +35,7 @@ export const GAMES: Partial<Record<RobotId, (LevelGame | undefined)[]>> = {
     { title: 'Apolo 11', subtitle: 'Misión 2 · La historia del primer alunizaje', play: apollo11Story },
     { title: 'Dato curioso', subtitle: 'Misión 3 · Escucha el dato en inglés', play: audioFact },
   ],
+  opportunity: OPPORTUNITY_GAMES,
 };
 
 export function getGame(robot: RobotId, level: number): LevelGame | undefined {
