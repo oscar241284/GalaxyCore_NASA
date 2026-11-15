@@ -11,6 +11,38 @@ import lunarLanding from './lunarLanding';
 import apollo11Story from './apollo11Story';
 import audioFact from './audioFact';
 import { withIntro } from './introVideo';
+import lkRemote from './lkRemote';
+import lkDayNight from './lkDayNight';
+import lkPhotos from './lkPhotos';
+import lkLaser from './lkLaser';
+import spAirbags from './spAirbags';
+import spRocks from './spRocks';
+import spWheel from './spWheel';
+import spSand from './spSand';
+
+/**
+ * Carga diferida: los niveles 3D de Opportunity (three.js) solo se descargan al abrirlos,
+ * así la app inicial sigue siendo liviana.
+ */
+const lazyGame =
+  (load: () => Promise<{ default: MiniGame }>): MiniGame =>
+  (ctx) => {
+    let dead = false;
+    let cleanup: (() => void) | void;
+    ctx.root.innerHTML =
+      '<div style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-ui);letter-spacing:.14em;color:#fcd34d;background:radial-gradient(circle,#3a1d0e,#120a06)">CARGANDO MARTE 3D…</div>';
+    load()
+      .then((m) => {
+        if (!dead) cleanup = m.default(ctx);
+      })
+      .catch(() => {
+        if (!dead) ctx.root.innerHTML = '<p style="padding:24px">No se pudo cargar el nivel. Revisa tu conexión e inténtalo otra vez.</p>';
+      });
+    return () => {
+      dead = true;
+      if (typeof cleanup === 'function') cleanup();
+    };
+  };
 
 export interface GameContext {
   root: HTMLElement;
@@ -33,6 +65,24 @@ export const GAMES: Partial<Record<RobotId, (LevelGame | undefined)[]>> = {
     { title: 'Aterrizaje', subtitle: 'Misión 1 · Aterriza el módulo lunar', play: withIntro('videos/moon_1.mp4', lunarLanding) },
     { title: 'Apolo 11', subtitle: 'Misión 2 · La historia del primer alunizaje', play: apollo11Story },
     { title: 'Dato curioso', subtitle: 'Misión 3 · Escucha el dato en inglés', play: audioFact },
+  ],
+  lunokhod2: [
+    { title: 'Control remoto', subtitle: 'Misión 1 · Maneja el robot desde la Tierra', play: lkRemote },
+    { title: 'Día y noche', subtitle: 'Misión 2 · Sobrevive a la noche lunar', play: lkDayNight },
+    { title: 'Foto por foto', subtitle: 'Misión 3 · Elige el camino mirando fotos', play: lkPhotos },
+    { title: 'Espejo láser', subtitle: 'Misión 4 · Mide la distancia a la Luna', play: lkLaser },
+  ],
+  spirit: [
+    { title: 'Bolsas de aire', subtitle: 'Misión 1 · Aterriza en Marte rebotando', play: spAirbags },
+    { title: 'Rocas pista', subtitle: 'Misión 2 · Detective de rocas', play: spRocks },
+    { title: 'Rueda rota', subtitle: 'Misión 3 · Maneja de reversa', play: spWheel },
+    { title: 'Atrapado', subtitle: 'Misión 4 · Sal de la arena', play: spSand },
+  ],
+  opportunity: [
+    { title: 'Hoyo en uno', subtitle: 'Misión 1 · Aterriza dentro del cráter Eagle', play: lazyGame(() => import('./op3d/opLanding')) },
+    { title: 'Bolitas azules', subtitle: 'Misión 2 · Busca hematita en el cráter Eagle', play: lazyGame(() => import('./op3d/opBerries')) },
+    { title: 'Energía solar', subtitle: 'Misión 3 · Viaja hasta Endeavour', play: lazyGame(() => import('./op3d/opSolar')) },
+    { title: 'La gran tormenta', subtitle: 'Misión 4 · Resiste la tormenta de 2018', play: lazyGame(() => import('./op3d/opStorm')) },
   ],
 };
 
