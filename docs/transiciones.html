@@ -179,7 +179,7 @@ td.num { color: var(--muted); font-variant-numeric: tabular-nums; }
 <div class="wrap">
   <header class="top">
     <p class="kicker">&gt; docs/transiciones</p>
-    <h1>NovaCore <span>·</span> Transiciones</h1>
+    <h1>GalaxyCore <span>·</span> Transiciones</h1>
     <p class="lead">La máquina de estados de pantallas de la misión, tomada del código: <code>src/router.ts</code>, <code>src/main.ts</code>, <code>src/ui/header.ts</code>, <code>src/ui/modal.ts</code>, <code>src/store.ts</code> y <code>src/screens/*.ts</code>. Cada flecha lleva su disparador y cada caja muestra los sub-estados internos de la pantalla.</p>
   </header>
 
@@ -259,7 +259,7 @@ td.num { color: var(--muted); font-variant-numeric: tabular-nums; }
     <div class="card"><h3>Nivel extra (16/16)</h3><p><code>allLevelsDone()</code> = <code>levelsDone() &gt;= 16</code> (4 robots × 4 niveles). Si además <code>finalDone</code> es falso, los podios saltan a <code>final</code> a los 50 ms de montarse (<code>podiums.ts:142-144</code>).</p></div>
     <div class="card"><h3>?debug=allcomplete</h3><p>Marca los 4 robots armados y los 16 niveles solo en memoria (<code>store.ts:170-177</code>). Al llegar a los podios se abre el nivel extra. El siguiente autoguardado lo persiste.</p></div>
     <div class="card"><h3>?debug=robot=&lt;id&gt;</h3><p>Arranca directo en el puzzle (<code>main.ts:42</code>). Ids: <code>lrv</code>, <code>lunokhod2</code>, <code>spirit</code>, <code>opportunity</code>. Acepta también <code>robot:&lt;id&gt;</code>. Se puede combinar: <code>?debug=allcomplete,robot=spirit</code>.</p></div>
-    <div class="card"><h3>Persistencia</h3><p>Clave <code>novacore-mision:v1</code>. Se guarda el estado completo en <code>setName</code>, <code>markAssembled</code>, <code>markLevel</code>, <code>setFinalResult</code> y en Menú → Guardar. <code>resetState</code> borra la clave.</p></div>
+    <div class="card"><h3>Persistencia</h3><p>Clave <code>galaxycore-mision:v1</code>. Se guarda el estado completo en <code>setName</code>, <code>markAssembled</code>, <code>markLevel</code>, <code>setFinalResult</code> y en Menú → Guardar. <code>resetState</code> borra la clave.</p></div>
     <div class="card"><h3>Router</h3><p><code>TRANSITIONS</code> no bloquea: una transición no declarada solo genera un <code>console.warn</code>. Si llegan varias llamadas a <code>go()</code> durante un cambio, solo se ejecuta la última.</p></div>
   </div>
 </div>

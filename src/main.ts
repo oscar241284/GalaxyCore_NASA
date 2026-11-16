@@ -1,3 +1,4 @@
+import './migrateStorage';
 import './styles/index.css';
 import { takeResume } from './i18n';
 import { go, initRouter, onScreenChange, type ScreenId, type ScreenParams } from './router';

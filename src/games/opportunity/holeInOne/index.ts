@@ -32,7 +32,7 @@ const REAL_BOUNCES = 26;
 const SPEEDS = [1, 1.5, 2, 3] as const;
 /** Al rodar no pasa nada emocionante: como mínimo va a esta velocidad. */
 const ROLL_MIN_SPEED = 2;
-const SPEED_KEY = 'novacore:hio-speed';
+const SPEED_KEY = 'galaxycore:hio-speed';
 /** Tamaño lógico del radar (px). */
 const RADAR = { w: 172, h: 214 };
 

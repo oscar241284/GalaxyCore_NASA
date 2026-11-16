@@ -145,11 +145,11 @@ const readStr = (key: string, def: string): string => {
     return def;
   }
 };
-let soundOn = pref('novacore:ui-sound', true);
-let autoVoice = pref('novacore:auto-voice', false);
-let calm = pref('novacore:calm', false);
-let moreData = pref('novacore:more-data', false);
-let bipColor = readStr('novacore:bip-color', 'lila');
+let soundOn = pref('galaxycore:ui-sound', true);
+let autoVoice = pref('galaxycore:auto-voice', false);
+let calm = pref('galaxycore:calm', false);
+let moreData = pref('galaxycore:more-data', false);
+let bipColor = readStr('galaxycore:bip-color', 'lila');
 
 const CSS = `
 .kid {
@@ -1170,10 +1170,10 @@ const home: ScreenFactory = ({ root, go }) => {
   });
 
   const OPTS: Record<string, { get: () => boolean; set: (v: boolean) => void }> = {
-    sound: { get: () => soundOn, set: (v) => ((soundOn = v), savePref('novacore:ui-sound', v)) },
-    voice: { get: () => autoVoice, set: (v) => ((autoVoice = v), savePref('novacore:auto-voice', v), v && speak()) },
-    calm: { get: () => calm, set: (v) => ((calm = v), savePref('novacore:calm', v), applyCalm()) },
-    more: { get: () => moreData, set: (v) => ((moreData = v), savePref('novacore:more-data', v)) },
+    sound: { get: () => soundOn, set: (v) => ((soundOn = v), savePref('galaxycore:ui-sound', v)) },
+    voice: { get: () => autoVoice, set: (v) => ((autoVoice = v), savePref('galaxycore:auto-voice', v), v && speak()) },
+    calm: { get: () => calm, set: (v) => ((calm = v), savePref('galaxycore:calm', v), applyCalm()) },
+    more: { get: () => moreData, set: (v) => ((moreData = v), savePref('galaxycore:more-data', v)) },
   };
   const paintOpts = () =>
     pop.querySelectorAll<HTMLButtonElement>('[data-opt]').forEach((b) => {
@@ -1197,7 +1197,7 @@ const home: ScreenFactory = ({ root, go }) => {
   pop.querySelectorAll<HTMLButtonElement>('[data-color]').forEach((b) =>
     b.addEventListener('click', () => {
       bipColor = b.dataset.color!;
-      savePref('novacore:bip-color', bipColor);
+      savePref('galaxycore:bip-color', bipColor);
       applyColor();
       jump();
       sfx.bip();

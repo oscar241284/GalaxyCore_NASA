@@ -224,7 +224,7 @@ class Sound {
 
   constructor() {
     try {
-      this.muted = localStorage.getItem('novacore:sound') === 'off';
+      this.muted = localStorage.getItem('galaxycore:sound') === 'off';
     } catch {
     }
   }
@@ -338,7 +338,7 @@ class Sound {
   toggle(): boolean {
     this.muted = !this.muted;
     try {
-      localStorage.setItem('novacore:sound', this.muted ? 'off' : 'on');
+      localStorage.setItem('galaxycore:sound', this.muted ? 'off' : 'on');
     } catch {
     }
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.8, this.ctx.currentTime, 0.05);

@@ -35,4 +35,4 @@ Tipos compartidos: `src/types.ts` (NO modificar sin avisar al orquestador).
 - Modal/tarjetas: `.modal-backdrop`, `.modal`, `.modal__title`, `.modal__actions`, `.info-card`
 - Final: `.stones`, `.stone`, `.stone--dragging`, `.stone--placed`, `.stone--correct`, `.stone--wrong`, `.dropzone--over`, `.certificate`
 - Utilidad: `.toast`, `.hud-hint`
-- Tokens en `:root`: `--bg`, `--fg`, `--accent` (violeta NovaCore), `--retro-green`, `--moon`, `--mars`, `--glow`. Fuentes Google: VT323 (terminal) y Orbitron/Space Grotesk (UI).
+- Tokens en `:root`: `--bg`, `--fg`, `--accent` (violeta GalaxyCore), `--retro-green`, `--moon`, `--mars`, `--glow`. Fuentes Google: VT323 (terminal) y Orbitron/Space Grotesk (UI).

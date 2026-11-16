@@ -629,7 +629,7 @@ const explore: ScreenFactory = ({ root, go, params }) => {
       const s = getRecovered();
       s.delete(ex.id);
       try {
-        localStorage.setItem('novacore:ghosts', JSON.stringify([...s]));
+        localStorage.setItem('galaxycore:ghosts', JSON.stringify([...s]));
       } catch {
       }
       renderFile();

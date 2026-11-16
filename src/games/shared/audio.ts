@@ -1,8 +1,8 @@
 /**
  * Sonido de los minijuegos 3D (Web Audio, sin archivos).
- * Respeta la misma preferencia de silencio que el resto del juego (`novacore:sound`).
+ * Respeta la misma preferencia de silencio que el resto del juego (`galaxycore:sound`).
  */
-const STORAGE_KEY = 'novacore:sound';
+const STORAGE_KEY = 'galaxycore:sound';
 const VOLUME = 0.8;
 
 export class Sfx {

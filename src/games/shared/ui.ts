@@ -3,7 +3,7 @@
  * centro de control, botón de sonido, botones que se mantienen pulsados y trozos de panel.
  *
  * Sigue el mismo lenguaje visual que los juegos del LRV (HUD de computadora, paneles
- * violeta NovaCore, botones físicos), con el ámbar de Opportunity como color de datos.
+ * violeta GalaxyCore, botones físicos), con el ámbar de Opportunity como color de datos.
  */
 import type { Sfx } from './audio';
 

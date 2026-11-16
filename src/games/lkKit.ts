@@ -93,14 +93,14 @@ export function stopSpeak(): void {
 }
 const autoVoice = () => {
   try {
-    return localStorage.getItem('novacore:auto-voice') === 'on';
+    return localStorage.getItem('galaxycore:auto-voice') === 'on';
   } catch {
     return false;
   }
 };
 const soundOn = () => {
   try {
-    return localStorage.getItem('novacore:ui-sound') !== 'off';
+    return localStorage.getItem('galaxycore:ui-sound') !== 'off';
   } catch {
     return true;
   }

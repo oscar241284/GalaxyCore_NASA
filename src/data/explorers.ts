@@ -298,7 +298,7 @@ export const EXPLORERS: Explorer[] = [
   },
 ];
 
-const KEY = 'novacore:ghosts';
+const KEY = 'galaxycore:ghosts';
 export function getRecovered(): Set<string> {
   try {
     return new Set(JSON.parse(localStorage.getItem(KEY) ?? '[]') as string[]);

@@ -49,7 +49,7 @@ export function withIntro(file: string, game: MiniGame, texts = { kicker: tr('MI
       <div class="iv">
         <video playsinline preload="auto" src="${src}" aria-label="${tr('Intro video', 'Video de introducción')}"></video>
         <div class="iv__tools">
-          <button type="button" class="iv__btn" data-unmute hidden>🔊 Activar sonido</button>
+          <button type="button" class="iv__btn" data-unmute hidden>🔊 ${tr('Turn on sound', 'Activar sonido')}</button>
           <button type="button" class="iv__btn" data-skip>${tr('Skip video', 'Saltar video')} ⏭</button>
         </div>
         <div class="iv__bar" aria-hidden="true"><s></s></div>

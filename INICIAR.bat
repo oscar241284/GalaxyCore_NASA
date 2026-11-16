@@ -1,9 +1,9 @@
 @echo off
-title NovaCore - Servidor local
+title GalaxyCore - Servidor local
 cd /d "%~dp0"
 
 echo ==============================================
-echo   NovaCore - Mision Robots
+echo   GalaxyCore - Mision Robots
 echo   Servidor local
 echo ==============================================
 echo.

@@ -1,6 +1,6 @@
-# NovaCore – Misión Robots
+# GalaxyCore – Misión Robots
 
-Experiencia web educativa del equipo **NovaCore** (NASA Space Apps): el astronauta conoce
+Experiencia web educativa del equipo **GalaxyCore** (NASA Space Apps): el astronauta conoce
 3 robots que exploraron la Luna y Marte — **LRV (Apollo 15)**, **Spirit** y
 **Opportunity (MER-B)** —, los reconstruye en 3D, recorre su ruta en un mapa y supera sus
 pruebas hasta obtener su certificado.
@@ -15,7 +15,7 @@ Stack: **Vite 8 + TypeScript (vanilla) + three.js 0.186 + GSAP 3.15**.
 Requisito: **Node.js 20 o superior** (https://nodejs.org, versión LTS).
 
 ```bash
-cd novacore-mision
+cd galaxycore-mision
 npm install          # solo la primera vez (descarga node_modules)
 npx vite --port 5173 # desarrollo → http://localhost:5173
 npm run build        # tsc --noEmit + vite build → dist/
@@ -61,7 +61,7 @@ index.html                 lang="es", carga /src/main.ts
 src/
   main.ts                  arranque: CSS, header, store, flags de debug, router
   router.ts                estados, transiciones, fades, prefers-reduced-motion (MOTION/dur)
-  store.ts                 estado + localStorage (clave "novacore-mision:v1")
+  store.ts                 estado + localStorage (clave "galaxycore-mision:v1")
   types.ts                 tipos compartidos (contrato)
   data/robots.ts           datos de robots, rutas, niveles y piedras        (diseñador)
   styles/*.css             estilos (index.css importa el resto)             (diseñador)

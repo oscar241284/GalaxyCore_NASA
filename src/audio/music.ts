@@ -181,7 +181,7 @@ const THEMES: Record<MusicTheme, ThemeDef> = {
   },
 };
 
-const MUTE_KEY = 'novacore:music-muted';
+const MUTE_KEY = 'galaxycore:music-muted';
 const MASTER = 0.55;
 const FADE = 1.6;
 

@@ -1,4 +1,4 @@
-# Transiciones entre pantallas — NovaCore · Misión Robots
+# Transiciones entre pantallas — GalaxyCore · Misión Robots
 
 Este documento describe la máquina de estados de pantallas de la experiencia. Se construyó
 leyendo el código real (`src/router.ts`, `src/main.ts`, `src/ui/header.ts`, `src/ui/modal.ts`,
@@ -155,7 +155,7 @@ stateDiagram-v2
     end note
 ```
 
-Leyenda: `[guarda]` = escribe en `localStorage` (clave `novacore-mision:v1`); `[borra]` = elimina esa clave.
+Leyenda: `[guarda]` = escribe en `localStorage` (clave `galaxycore-mision:v1`); `[borra]` = elimina esa clave.
 
 ## Tabla de transiciones
 
@@ -209,7 +209,7 @@ Leyenda: `[guarda]` = escribe en `localStorage` (clave `novacore-mision:v1`); `[
 
 ## Persistencia (localStorage)
 
-Clave: `novacore-mision:v1` (`store.ts:14`). El estado se **carga** al arrancar (`main.ts:33`).
+Clave: `galaxycore-mision:v1` (`store.ts:14`). El estado se **carga** al arrancar (`main.ts:33`).
 Toda mutación pasa por `commit()` (`store.ts:126-129`), que guarda **el estado completo**.
 
 | Momento | Función | Qué cambia | Archivo:línea |

@@ -1,7 +1,7 @@
 export type Lang = 'en' | 'es';
 
-const LANG_KEY = 'novacore-mision:lang';
-const RESUME_KEY = 'novacore-mision:resume';
+const LANG_KEY = 'galaxycore-mision:lang';
+const RESUME_KEY = 'galaxycore-mision:resume';
 
 function readLang(): Lang {
   try {

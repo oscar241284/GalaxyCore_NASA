@@ -1,6 +1,6 @@
 import type { RobotId } from './types';
 
-export const STORAGE_KEY = 'novacore-mision:v1';
+export const STORAGE_KEY = 'galaxycore-mision:v1';
 export const ALL_ROBOTS: RobotId[] = ['lrv', 'spirit', 'opportunity'];
 export const TOTAL_LEVELS = 12;
 export const TOTAL_STONES = 6;

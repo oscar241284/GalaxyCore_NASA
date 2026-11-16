@@ -1,4 +1,4 @@
-# Cómo abrir la web NovaCore en tu computadora
+# Cómo abrir la web GalaxyCore en tu computadora
 
 Esta guía es para personas que no programan. Sigue los pasos en orden.
 
@@ -20,15 +20,15 @@ doble clic, porque así la página se queda en blanco.
 
 ## Paso 1: descomprimir el proyecto
 
-1. Busca el archivo **`novacore-mision.zip`**.
+1. Busca el archivo **`galaxycore-mision.zip`**.
 2. Haz clic derecho sobre él → **Extraer todo…** → **Extraer**.
-3. Se crea una carpeta llamada `novacore-mision`. Ábrela.
+3. Se crea una carpeta llamada `galaxycore-mision`. Ábrela.
 
 ## Paso 2: arrancar la web
 
 ### Forma fácil (recomendada)
 
-1. Dentro de la carpeta `novacore-mision`, haz **doble clic en `INICIAR.bat`**.
+1. Dentro de la carpeta `galaxycore-mision`, haz **doble clic en `INICIAR.bat`**.
 2. Se abre una ventana negra.
    - **La primera vez** tarda entre 1 y 2 minutos, porque descarga las piezas necesarias.
      Es normal ver mucho texto.
@@ -42,7 +42,7 @@ doble clic, porque así la página se queda en blanco.
 
 ### Forma manual (si la fácil no funciona)
 
-1. Abre la carpeta `novacore-mision` en el Explorador de archivos.
+1. Abre la carpeta `galaxycore-mision` en el Explorador de archivos.
 2. Haz clic en la **barra de direcciones** de arriba (donde aparece la ruta de la carpeta),
    borra lo que haya, escribe **`cmd`** y pulsa **Enter**. Se abre una ventana negra ya situada
    en esa carpeta.
@@ -86,7 +86,7 @@ Para volver a usar la web otro día, repite solo el **Paso 2**.
 1. Instala Node.js desde https://nodejs.org (botón **LTS**).
 2. Descomprime el zip con doble clic.
 3. Abre la app **Terminal**, escribe `cd ` (con un espacio al final), **arrastra la carpeta
-   `novacore-mision` a la ventana** y pulsa Enter.
+   `galaxycore-mision` a la ventana** y pulsa Enter.
 4. Escribe `npm install` y pulsa Enter (solo la primera vez).
 5. Escribe `npx vite` y pulsa Enter, y abre **http://localhost:5173**.
 6. Para apagar el servidor, pulsa **Ctrl + C** en la Terminal.
