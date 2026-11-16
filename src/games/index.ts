@@ -1,9 +1,8 @@
 import type { RobotId } from '../types';
 import { injectGameStyles } from './styles';
 import lunarLanding from './lunarLanding';
-import apollo11Story from './apollo11Story';
-import audioFact from './audioFact';
 import { withIntro } from './introVideo';
+import { GENESIS_ROCK, HOUSTON_CAMERA } from './lrv';
 import { HOLE_IN_ONE } from './opportunity';
 import spAirbags from './spAirbags';
 import spRocks from './spRocks';
@@ -49,8 +48,8 @@ export interface LevelGame {
 export const GAMES: Partial<Record<RobotId, (LevelGame | undefined)[]>> = {
   lrv: [
     { title: tr('Landing', 'Aterrizaje'), subtitle: tr('Mission 1 · Land the lunar module', 'Misión 1 · Aterriza el módulo lunar'), play: withIntro('videos/moon_1.mp4', lunarLanding) },
-    { title: tr('Apollo 11', 'Apolo 11'), subtitle: tr('Mission 2 · The story of the first Moon landing', 'Misión 2 · La historia del primer alunizaje'), play: apollo11Story },
-    { title: tr('Fun fact', 'Dato curioso'), subtitle: tr('Mission 3 · Listen to the fact in English', 'Misión 3 · Escucha el dato en inglés'), play: audioFact },
+    GENESIS_ROCK,
+    HOUSTON_CAMERA,
   ],
   spirit: [
     { title: tr('Airbags', 'Bolsas de aire'), subtitle: tr('Mission 1 · Land on Mars by bouncing', 'Misión 1 · Aterriza en Marte rebotando'), play: spAirbags },

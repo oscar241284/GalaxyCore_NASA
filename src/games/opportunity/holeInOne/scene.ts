@@ -51,6 +51,7 @@ import type { Sprite } from 'three';
 import gsap from 'gsap';
 import { ParticleSystem, disposeSprite, flashSprite, glowTexture } from '../../../three/effects';
 import { buildRobot } from '../../../three/robots';
+import { Bin, hash } from '../../shared/three';
 import { BALL_R, FIELD, TRACE_MAX, heightAt } from './physics';
 import type { AimAid, Ball, Crater, Descent, Prediction, Terrain } from './physics';
 
@@ -108,24 +109,6 @@ export interface HoleScene {
   open(ball: Ball, onDone: () => void): void;
   dispose(): void;
 }
-
-/** Lista de recursos de GPU propios para liberarlos juntos. */
-class Bin {
-  private items: { dispose(): void }[] = [];
-  add<T extends { dispose(): void }>(item: T): T {
-    this.items.push(item);
-    return item;
-  }
-  empty(): void {
-    this.items.forEach((i) => i.dispose());
-    this.items = [];
-  }
-}
-
-const hash = (x: number, z: number): number => {
-  const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
-  return s - Math.floor(s);
-};
 
 export function createHoleScene(canvas: HTMLCanvasElement, reduceMotion: boolean): HoleScene {
   const renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });

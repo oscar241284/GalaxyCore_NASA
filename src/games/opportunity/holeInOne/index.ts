@@ -17,8 +17,8 @@
  */
 import type { GameContext } from '../../index';
 import { rng } from '../../../ui/moonTexture';
-import { Sfx } from '../shared/audio';
-import { bindHoldButton, bindMuteButton, createCapcom, difficultyHtml, injectOpStyles, reducedMotion, starsHtml, statsHtml } from '../shared/ui';
+import { Sfx } from '../../shared/audio';
+import { bindHoldButton, bindMuteButton, createCapcom, difficultyHtml, injectOpStyles, reducedMotion, starsHtml, statsHtml } from '../../shared/ui';
 import { BALL_R, DESCENT, EAGLE_REAL_RADIUS, FIELD, LEVELS, STEP, createWorld, heightAt, judge, newDescent, predict, releaseBall, stepBall, stepDescent } from './physics';
 import type { Ball, Descent, Difficulty, Outcome, Prediction, World } from './physics';
 import { createHoleScene } from './scene';

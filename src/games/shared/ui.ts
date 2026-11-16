@@ -1,5 +1,5 @@
 /**
- * Interfaz común de los minijuegos de Opportunity: estilos (prefijo `op-`), mensajes del
+ * Interfaz común de los minijuegos 3D (Opportunity y LRV): estilos (prefijo `op-`), mensajes del
  * centro de control, botón de sonido, botones que se mantienen pulsados y trozos de panel.
  *
  * Sigue el mismo lenguaje visual que los juegos del LRV (HUD de computadora, paneles
@@ -161,17 +161,17 @@ export const reducedMotion = (): boolean => window.matchMedia('(prefers-reduced-
 export type Speaker = 'control' | 'craft';
 
 /**
- * Mensajes de radio. `control` es el centro de control (JPL, en Pasadena) y `craft`
- * es la propia nave; `craftName` es la etiqueta que se muestra para ella.
+ * Mensajes de radio. `control` es el centro de control (`controlName`: JPL, Houston…) y
+ * `craft` es la propia nave o tripulación; `craftName` es la etiqueta que se muestra para ella.
  */
-export function createCapcom(el: HTMLElement, sfx: Sfx, craftName: string) {
+export function createCapcom(el: HTMLElement, sfx: Sfx, craftName: string, controlName = 'JPL') {
   return {
     say(text: string, from: Speaker = 'control'): void {
       if (from === 'control') sfx.radio();
       el.querySelectorAll('p').forEach((p) => p.classList.add('old'));
       const p = document.createElement('p');
       if (from === 'craft') p.className = 'op-from-craft';
-      p.innerHTML = `<b>${from === 'control' ? 'JPL' : craftName}</b>${text}`;
+      p.innerHTML = `<b>${from === 'control' ? controlName : craftName}</b>${text}`;
       el.appendChild(p);
       while (el.children.length > 3) el.firstElementChild!.remove();
     },

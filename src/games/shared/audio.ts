@@ -1,5 +1,5 @@
 /**
- * Sonido de los minijuegos de Opportunity (Web Audio, sin archivos).
+ * Sonido de los minijuegos 3D (Web Audio, sin archivos).
  * Respeta la misma preferencia de silencio que el resto del juego (`novacore:sound`).
  */
 const STORAGE_KEY = 'novacore:sound';
@@ -124,7 +124,21 @@ export class Sfx {
     return this.muted;
   }
 
+  /** Lee una frase en inglés con la voz del navegador (si existe y no está silenciado). */
+  speakEnglish(text: string): void {
+    const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
+    if (!synth || this.muted) return;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 0.9;
+    const voice = synth.getVoices().find((v) => v.lang.startsWith('en'));
+    if (voice) u.voice = voice;
+    synth.speak(u);
+  }
+
   stop(): void {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     void this.ctx?.close();
     this.ctx = null;
     this.master = null;

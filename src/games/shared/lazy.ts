@@ -2,7 +2,7 @@
  * Carga diferida de un minijuego: su código (y three.js) solo se descarga al abrirlo.
  * Devuelve un `MiniGame` normal, así que el sistema `GAMES` / `openGame()` no cambia.
  */
-import type { GameContext, MiniGame } from '../../index';
+import type { GameContext, MiniGame } from '../index';
 import { injectOpStyles } from './ui';
 
 export function lazyGame(load: () => Promise<{ default: MiniGame }>): MiniGame {
