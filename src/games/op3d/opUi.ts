@@ -15,11 +15,11 @@ export interface OpUi {
   card: (id: string, label: string, value: string) => void;
 }
 
-export function mountOp(root: HTMLElement, task: string, opts: { joystick?: boolean } = {}): OpUi {
+export function mountOp(root: HTMLElement, task: string, opts: { joystick?: boolean; blue?: boolean } = {}): OpUi {
   injectKit();
   injectOpCss();
   root.innerHTML = `
-    <div class="op lk" style="--lk-accent:#f59e0b;--lk-soft:#fcd34d">
+    <div class="op lk${opts.blue ? ' op--blue' : ''}" style="--lk-accent:${opts.blue ? '#3b82f6' : '#f59e0b'};--lk-soft:${opts.blue ? '#93c5fd' : '#fcd34d'}">
       <div class="op__canvas" data-canvas></div>
       <div class="op__hud" data-hud><div class="op__card op__task">${task}</div><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end" data-cards></div></div>
       <div class="op__center" data-center></div>

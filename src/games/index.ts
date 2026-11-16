@@ -4,10 +4,6 @@ import lunarLanding from './lunarLanding';
 import { withIntro } from './introVideo';
 import { GENESIS_ROCK, HOUSTON_CAMERA } from './lrv';
 import { HOLE_IN_ONE } from './opportunity';
-import spAirbags from './spAirbags';
-import spRocks from './spRocks';
-import spWheel from './spWheel';
-import spSand from './spSand';
 import { tr } from '../i18n';
 import { setMusicTheme, type MusicTheme } from '../audio/music';
 import { currentScreen } from '../router';
@@ -52,10 +48,10 @@ export const GAMES: Partial<Record<RobotId, (LevelGame | undefined)[]>> = {
     HOUSTON_CAMERA,
   ],
   spirit: [
-    { title: tr('Airbags', 'Bolsas de aire'), subtitle: tr('Mission 1 · Land on Mars by bouncing', 'Misión 1 · Aterriza en Marte rebotando'), play: spAirbags },
-    { title: tr('Clue rocks', 'Rocas pista'), subtitle: tr('Mission 2 · Rock detective', 'Misión 2 · Detective de rocas'), play: spRocks },
-    { title: tr('Broken wheel', 'Rueda rota'), subtitle: tr('Mission 3 · Drive in reverse', 'Misión 3 · Maneja de reversa'), play: spWheel },
-    { title: tr('Stuck', 'Atrapado'), subtitle: tr('Mission 4 · Get out of the sand', 'Misión 4 · Sal de la arena'), play: spSand },
+    { title: tr('Airbags', 'Bolsas de aire'), subtitle: tr('Mission 1 · Land on Mars by bouncing', 'Misión 1 · Aterriza en Marte rebotando'), play: lazyGame(() => import('./sp3d/spAirbags')) },
+    { title: tr('Clue rocks', 'Rocas pista'), subtitle: tr('Mission 2 · Rock detective', 'Misión 2 · Detective de rocas'), play: lazyGame(() => import('./sp3d/spRocks')) },
+    { title: tr('Broken wheel', 'Rueda rota'), subtitle: tr('Mission 3 · Drive in reverse', 'Misión 3 · Maneja de reversa'), play: lazyGame(() => import('./sp3d/spWheel')) },
+    { title: tr('Stuck', 'Atrapado'), subtitle: tr('Mission 4 · Get out of the sand', 'Misión 4 · Sal de la arena'), play: lazyGame(() => import('./sp3d/spSand')) },
   ],
   opportunity: [
     { ...HOLE_IN_ONE, play: withIntro('videos/moon_2.mp4', HOLE_IN_ONE.play, { kicker: tr('MISSION 1', 'MISIÓN 1'), title: tr('Ready to land on Mars?', '¿Listo para aterrizar en Marte?') }) },

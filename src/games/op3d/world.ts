@@ -552,13 +552,14 @@ export interface Rover {
   z: number;
   heading: number;
   speed: number;
+  wheels: Object3D[];
   setDust: (k: number) => void;
   update: (dt: number, throttle: number, steer: number, blocked?: (x: number, z: number) => boolean) => void;
   place: () => void;
 }
 
-export function createRover(world: World, x = 0, z = 0, heading = 0): Rover {
-  const model = buildMER('opportunity', '#f59e0b');
+export function createRover(world: World, x = 0, z = 0, heading = 0, opts: { name?: string; accent?: string } = {}): Rover {
+  const model = buildMER(opts.name ?? 'opportunity', opts.accent ?? '#f59e0b');
   const group = new Group();
   model.group.scale.setScalar(1.15);
   group.add(model.group);
@@ -594,6 +595,7 @@ export function createRover(world: World, x = 0, z = 0, heading = 0): Rover {
     z,
     heading,
     speed: 0,
+    wheels,
     setDust: (k: number) => {
       panelMats.forEach((m) => {
         m.color.copy(clean).lerp(dirty, k);
@@ -786,6 +788,10 @@ export const OP_CSS = `
 .op__panel { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(10,5,3,.55); backdrop-filter: blur(3px); z-index: 5; }
 .op__panel > div { width: min(560px, 100%); max-height: 100%; overflow-y: auto; padding: 22px; border-radius: 22px; background: rgba(28,14,8,.94); border: 2px solid #f59e0b; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 .op__loading { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-ui); letter-spacing: .14em; color: #fcd34d; background: radial-gradient(circle, #3a1d0e, #120a06); }
+.op--blue .op__card small { color: #93c5fd; }
+.op--blue .opj__knob { background: radial-gradient(circle at 35% 30%, #bfdbfe, #3b82f6); }
+.op--blue .op__panel > div { border-color: #3b82f6; }
+.op--blue .op__loading { color: #93c5fd; }
 @media (max-width: 760px) {
   .op__say { width: calc(100% - 28px); bottom: 168px; }
   .opj { width: 116px; height: 116px; }
