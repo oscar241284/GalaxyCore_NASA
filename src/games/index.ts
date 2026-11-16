@@ -52,13 +52,13 @@ export const GAMES: Partial<Record<RobotId, (LevelGame | undefined)[]>> = {
     HOUSTON_CAMERA,
   ],
   spirit: [
-    { title: tr('Airbags', 'Bolsas de aire'), subtitle: tr('Mission 1 · Land on Mars by bouncing', 'Misión 1 · Aterriza en Marte rebotando'), play: withIntro('videos/moon_2.mp4', spAirbags, { kicker: tr('MISSION 1', 'MISIÓN 1'), title: tr('Ready to land on Mars?', '¿Listo para aterrizar en Marte?') }) },
+    { title: tr('Airbags', 'Bolsas de aire'), subtitle: tr('Mission 1 · Land on Mars by bouncing', 'Misión 1 · Aterriza en Marte rebotando'), play: spAirbags },
     { title: tr('Clue rocks', 'Rocas pista'), subtitle: tr('Mission 2 · Rock detective', 'Misión 2 · Detective de rocas'), play: spRocks },
     { title: tr('Broken wheel', 'Rueda rota'), subtitle: tr('Mission 3 · Drive in reverse', 'Misión 3 · Maneja de reversa'), play: spWheel },
     { title: tr('Stuck', 'Atrapado'), subtitle: tr('Mission 4 · Get out of the sand', 'Misión 4 · Sal de la arena'), play: spSand },
   ],
   opportunity: [
-    HOLE_IN_ONE,
+    { ...HOLE_IN_ONE, play: withIntro('videos/moon_2.mp4', HOLE_IN_ONE.play, { kicker: tr('MISSION 1', 'MISIÓN 1'), title: tr('Ready to land on Mars?', '¿Listo para aterrizar en Marte?') }) },
     { title: tr('Blueberries', 'Bolitas azules'), subtitle: tr('Mission 2 · Search for hematite in Eagle crater', 'Misión 2 · Busca hematita en el cráter Eagle'), play: lazyGame(() => import('./op3d/opBerries')) },
     { title: tr('Solar power', 'Energía solar'), subtitle: tr('Mission 3 · Travel to Endeavour', 'Misión 3 · Viaja hasta Endeavour'), play: lazyGame(() => import('./op3d/opSolar')) },
     { title: tr('The great storm', 'La gran tormenta'), subtitle: tr('Mission 4 · Survive the 2018 storm', 'Misión 4 · Resiste la tormenta de 2018'), play: lazyGame(() => import('./op3d/opStorm')) },
